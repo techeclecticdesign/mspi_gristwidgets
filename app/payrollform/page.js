@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
+import Autocomplete from "@mui/material/Autocomplete";
 import Button from "@mui/material/Button";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
@@ -25,13 +26,22 @@ export default function PayrollForm() {
     const grist = useGrist();
     const weekRanges = useMemo(() => getWeekRanges(), []);
     const { payHours, setPayHours, workers, timeclock, production, mutate } = usePayrollData();
-    const [filters, setFilters] = useState({ mdoc: "", dateRange: null });
+    const [filters, setFilters] = useState({ name: "", mdoc: "", dateRange: null });
     const { laborData, setLaborData, loadLaborData, aggregatedWorkHours } =
         useLaborData(payHours, weekRanges, filters, timeclock);
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState("");
     const [workerBalances, setWorkerBalances] = useState({});
     const pendingOnBlur = useRef(false);
+    const nameOptions = useMemo(
+        () =>
+            Object.entries(workers).map(([mdoc, w]) => ({
+                label: w.name,
+                mdoc,
+            })),
+        [workers]
+    );
+
 
     const updateLaborEntry = (rowIndex, dayIndex, timeOfDay, value, errorFlag = false) => {
         setLaborData(prevData =>
@@ -201,8 +211,6 @@ export default function PayrollForm() {
         }
     };
 
-
-
     // Change pay rate for a worked period.
     const handleRateChange = (componentIndex, dayIndex, timeOfDay, rate) => {
         setLaborData(prevData => {
@@ -347,8 +355,13 @@ export default function PayrollForm() {
         }
     };
 
-    const handleMdocChange = (e) => {
-        setFilters(prev => ({ ...prev, mdoc: e.target.value }));
+    const handleNameSelect = (name) => {
+        const match = nameOptions.find(o => o.label === name);
+        setFilters(prev => ({
+            ...prev,
+            name,
+            mdoc: match?.mdoc || "",
+        }));
     };
 
     const handleDateRangeChange = (e) => {
@@ -406,14 +419,32 @@ export default function PayrollForm() {
         <>
             <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <Box sx={{ display: "flex", flexDirection: "column", ml: "auto", width: "0%" }}>
-                    <TextField
-                        label="Mdoc"
-                        size="small"
-                        variant="outlined"
-                        placeholder="Enter Mdoc"
-                        value={filters.mdoc}
-                        onChange={handleMdocChange}
+                    <Autocomplete
+                        freeSolo
+                        selectOnFocus
+                        clearOnBlur
+                        handleHomeEndKeys
+                        options={nameOptions.map(o => o.label)}
+                        inputValue={filters.name}
+                        onInputChange={(_, newInput) => {
+                            // whenever the text input changes
+                            handleNameSelect(newInput);
+                        }}
+                        onChange={(_, newValue) => {
+                            // whenever the user picks from the dropdown
+                            if (newValue) handleNameSelect(newValue);
+                        }}
                         sx={{ width: 190, mb: 2 }}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Name"
+                                size="small"
+                                placeholder="Enter name"
+                                error={Boolean(filters.name && !filters.mdoc)}
+                                helperText={filters.name && !filters.mdoc ? "Name not found" : ""}
+                            />
+                        )}
                     />
                     <TextField
                         select
