@@ -17,7 +17,7 @@ import {
     formatDate,
     sumForDayAndTime,
     distributeRounded,
-} from "./_util/func";
+} from "./_util/funcs";
 import { updateBackendRecord, deleteBackendRecord, batchUpdateBackendRecords } from "./_util/api";
 import usePayrollData from "./_hooks/usePayrollData";
 import useLaborData from "./_hooks/useLaborData";

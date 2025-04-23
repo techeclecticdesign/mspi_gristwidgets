@@ -5,7 +5,7 @@ import DayRow from "./DayRow";
 const RateModal = React.lazy(() => import("./RateModal"));
 import WarningModal from "./WarningModal";
 import NhifmModal from "./NhifmModal";
-import { calcDefaultWage, isPaidOnNhifmDay, validDaysOfWeek } from "../_util/func";
+import { calcDefaultWage, isPaidOnNhifmDay, validDaysOfWeek } from "../_util/funcs";
 
 export default function LaborForWeekPO({
   rowIndex,

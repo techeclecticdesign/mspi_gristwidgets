@@ -1,4 +1,4 @@
-import { getAggregatedWorkHours, daysOfWeek, validDaysOfWeek } from "./func";
+import { getAggregatedWorkHours, daysOfWeek, validDaysOfWeek } from "./funcs";
 
 export async function updateBackendRecord(
   { filters, weekRanges, filteredTimeclock },

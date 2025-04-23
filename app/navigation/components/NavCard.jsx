@@ -11,6 +11,7 @@ export default function NavCard({
   links = [],
   width = '40%',
 }) {
+  links = Array.isArray(links) ? links : [];
   return (
     <Card sx={{ width }}>
       <CardContent sx={{ p: 0 }}>
@@ -24,27 +25,34 @@ export default function NavCard({
           }}
         >
           <Toolbar variant="dense">
-            <Typography variant="body1">
-              {title}
-            </Typography>
+            {title}
           </Toolbar>
         </AppBar>
 
         <Stack spacing={1.5} sx={{ pt: 2, alignItems: 'center' }}>
-          {links.map(({ label, href, external }) => (
-            <Button
-              key={label}
-              variant="contained"
-              component="a"
-              href={href}
-              {...(external
-                ? { target: '_blank', rel: 'noopener noreferrer' }
-                : {})}
-              sx={{ textTransform: 'none', width: '75%', height: 30 }}
-            >
-              {label}
-            </Button>
-          ))}
+          {links.map(({ label, href, external, onClick }) => {
+            // if onClick is present, render as a normal button
+            const buttonProps = onClick
+              ? { onClick }
+              : {
+                component: 'a',
+                href,
+                ...(external
+                  ? { target: '_blank', rel: 'noopener noreferrer' }
+                  : {}),
+              };
+
+            return (
+              <Button
+                key={label}
+                variant="contained"
+                {...buttonProps}
+                sx={{ textTransform: 'none', width: '75%', height: 30 }}
+              >
+                {label}
+              </Button>
+            );
+          })}
         </Stack>
       </CardContent>
     </Card>

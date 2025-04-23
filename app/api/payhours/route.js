@@ -36,7 +36,7 @@ function buildEntry(body) {
 }
 
 export async function GET(request) {
-  const host = process.env.HOST;
+  const host = process.env.NEXT_PUBLIC_GRIST_HOST;
   const apiKey = process.env.API_KEY;
   const docId = process.env.WOODSHOP_DOC;
 
@@ -83,7 +83,7 @@ export async function GET(request) {
 
 
 export async function POST(request) {
-  const host = process.env.HOST;
+  const host = process.env.NEXT_PUBLIC_GRIST_HOST;
   const apiKey = process.env.API_KEY;
   const docId = process.env.WOODSHOP_DOC;
   const tableId = "PayHours";
@@ -109,7 +109,7 @@ export async function POST(request) {
 }
 
 export async function PUT(request) {
-  const host = process.env.HOST;
+  const host = process.env.NEXT_PUBLIC_GRIST_HOST;
   const apiKey = process.env.API_KEY;
   const docId = process.env.WOODSHOP_DOC;
   const tableId = "PayHours";
@@ -204,14 +204,11 @@ export async function PUT(request) {
   }
 }
 
-// This global variable holds a promise chain for deletions.
 let deletionQueue = Promise.resolve();
 
 export async function DELETE(request) {
-  // Chain this deletion to the existing queue.
   const result = await (deletionQueue = deletionQueue.then(async () => {
-    // Your deletion logic goes here. For example:
-    const host = process.env.HOST;
+    const host = process.env.NEXT_PUBLIC_GRIST_HOST;
     const apiKey = process.env.API_KEY;
     const docId = process.env.WOODSHOP_DOC;
     const tableId = "PayHours";

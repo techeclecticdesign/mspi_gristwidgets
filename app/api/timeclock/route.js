@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { fetchWithRetry } from "@/app/lib/fetchWithRetry";
 
 export async function GET() {
-  const host = process.env.HOST;
+  const host = process.env.NEXT_PUBLIC_GRIST_HOST;
   const apiKey = process.env.API_KEY;
   const docId = process.env.WOODSHOP_DOC;
 

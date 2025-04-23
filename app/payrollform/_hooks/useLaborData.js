@@ -4,7 +4,7 @@ import {
   validDaysOfWeek,
   filterPayRecords,
   getAggregatedWorkHours,
-} from "../_util/func";
+} from "../_util/funcs";
 
 const NUM_PROJECTS = 16;
 

@@ -26,7 +26,7 @@ export default function GristProvider({
 
   return (
     <GristContext.Provider value={gristOb}>
-      <Script src="grist-plugin-api.js" onLoad={handleScriptLoad} />
+      <Script src="/grist-plugin-api.js" onLoad={handleScriptLoad} />
       <div>{children}</div>
     </GristContext.Provider>
   );
