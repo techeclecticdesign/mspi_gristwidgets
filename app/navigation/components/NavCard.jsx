@@ -8,33 +8,39 @@ import Button from '@mui/material/Button';
 
 export default function NavCard({
   title,
-  links = {}, // {label: address, ...}
+  links = [],
   width = '40%',
 }) {
   return (
-    <Card sx={{ maxWidth: { width } }}>
+    <Card sx={{ width }}>
       <CardContent sx={{ p: 0 }}>
         <AppBar
           position="static"
           sx={{
-            margin: 0,
+            m: 0,
             height: 34,
             justifyContent: 'center',
             backgroundColor: '#059669',
-          }}>
-          <Toolbar>
-            <Typography variant="p" component="div">
+          }}
+        >
+          <Toolbar variant="dense">
+            <Typography variant="body1">
               {title}
             </Typography>
           </Toolbar>
         </AppBar>
-        <Stack spacing={1.5} sx={{ pt: '20px', alignItems: 'center' }}>
-          {Object.entries(links).map(([label, address]) => (
+
+        <Stack spacing={1.5} sx={{ pt: 2, alignItems: 'center' }}>
+          {links.map(({ label, href, external }) => (
             <Button
               key={label}
               variant="contained"
-              href={address}
-              sx={{ textTransform: 'none', width: '75%', height: '30px' }}
+              component="a"
+              href={href}
+              {...(external
+                ? { target: '_blank', rel: 'noopener noreferrer' }
+                : {})}
+              sx={{ textTransform: 'none', width: '75%', height: 30 }}
             >
               {label}
             </Button>
@@ -42,5 +48,5 @@ export default function NavCard({
         </Stack>
       </CardContent>
     </Card>
-  )
+  );
 }
