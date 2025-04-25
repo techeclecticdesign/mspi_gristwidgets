@@ -29,7 +29,7 @@ export default function Payroll() {
     const endSec = Math.floor(endDate.getTime() / 1000);
 
     const res = await fetch(
-      `/api/payrollReports?start=${startSec}&end=${endSec}`
+      `/api/payrollreports?start=${startSec}&end=${endSec}`
     );
     if (!res.ok) {
       console.error("Failed to generate PDF", await res.text());

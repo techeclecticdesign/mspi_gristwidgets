@@ -9,9 +9,8 @@ export default function Layout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const paths = ['/navigation/products', '/navigation/payroll',
-    '/navigation/reports', '/navigation/administration'];
+    '/navigation/reports', '/navigation/inventory', '/navigation/administration'];
   const [activeTab, setActiveTab] = useState(0);
-
   const handleChange = (event, newValue) => {
     setActiveTab(newValue);
     router.push(paths[newValue]);
@@ -24,7 +23,7 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="w-3/4 h-[40px] rounded-3xl m-auto mt-2 overflow-hidden text-white border border-emerald-500 shadow-xl">
+      <div className="w-5/6 h-[40px] rounded-3xl m-auto mt-2 overflow-hidden text-white border border-emerald-500 shadow-xl">
         <Tabs
           value={activeTab}
           onChange={handleChange}
@@ -57,6 +56,7 @@ export default function Layout({ children }) {
           <Tab label="Payroll" />
           <Tab label="Reports" />
           <Tab label="Inventory" />
+          <Tab label="Administration" />
         </Tabs>
       </div>
       <div className="flex-1">{children}</div>
