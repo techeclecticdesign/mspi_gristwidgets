@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchWithRetry } from "@/app/lib/fetchWithRetry";
+import { groupPayHoursByMdoc, filterAndIndexWorkersByMdoc } from "@/app/lib/api";
 
 export async function GET(request) {
   const origin = new URL(request.url).origin;
@@ -50,30 +50,14 @@ export async function GET(request) {
     const timeclockJson = await timeclockRes.json();
     const productionJson = await productionRes.json();
 
-    // Transform payHours: group by mdoc
-    const payHours = payJson.records.reduce((acc, rec) => {
-      const key = rec.fields.mdoc;
-      acc[key] = acc[key] || [];
-      acc[key].push(rec.fields);
-      return acc;
-    }, {});
-
-    // Transform workers: filter out ended, index by mdoc
-    const workers = workersJson.records
-      .filter(({ fields }) =>
-        !fields.end_date || fields.end_date < fields.start_date
-      )
-      .reduce((acc, { fields }) => {
-        acc[fields.mdoc] = fields;
-        return acc;
-      }, {});
-
+    const payHours = groupPayHoursByMdoc(payJson.records);
+    const workers = filterAndIndexWorkersByMdoc(workersJson.records);
     const timeclock = timeclockJson.records;
     const production = productionJson;
 
     return NextResponse.json({ payHours, workers, timeclock, production });
   } catch (err) {
-    console.error("Error in /api/payrollData:", err);
+    console.error("Error in /api/payrolldata:", err);
     return NextResponse.json(
       { error: err.message || "Internal Server Error" },
       { status: 500 }

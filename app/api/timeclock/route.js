@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchWithRetry } from "@/app/lib/fetchWithRetry";
+import { fetchWithRetry } from "@/app/lib/api";
 
 export async function GET() {
   const host = process.env.NEXT_PUBLIC_GRIST_HOST;

@@ -1,4 +1,4 @@
-import { fetchWithRetry } from "@/app/lib/fetchWithRetry";
+import { fetchWithRetry } from "@/app/lib/api";
 import React from "react";
 import { renderToStream } from "@react-pdf/renderer";
 import { PayrollReport, PayrollRow } from "@/app/pdf/payrollReport";

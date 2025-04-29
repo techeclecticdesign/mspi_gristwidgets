@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { sendGristTableRequest } from "@/app/lib/gristRequests";
-import { fetchWithRetry } from "@/app/lib/fetchWithRetry";
+import { fetchWithRetry, sendGristTableRequest } from "@/app/lib/api";
 
 export async function GET() {
   const host = process.env.NEXT_PUBLIC_GRIST_HOST;
@@ -83,14 +82,6 @@ export async function PUT(request) {
     let records = [];
     if (findData.records) {
       records = findData.records;
-    } else if (findData.rows && findData.columns) {
-      records = findData.rows.map(row => {
-        const rec = {};
-        findData.columns.forEach((col, i) => {
-          rec[col] = row[i];
-        });
-        return rec;
-      });
     }
 
     if (!records.length) {
