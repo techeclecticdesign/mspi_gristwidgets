@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { sendGristTableRequest, sendGristDeleteRequest } from "@/app/lib/gristRequests";
-import { fetchWithRetry } from "@/app/lib/fetchWithRetry";
+import { fetchWithRetry, sendGristTableRequest, sendGristDeleteRequest } from "@/app/lib/api";
 
 function buildEntry(body) {
   const { mdoc, po_number, date_worked, period, laborsheet_hours, hourly_rate, timeclock_hours } = body;
@@ -103,7 +102,6 @@ export async function POST(request) {
     const result = await sendGristTableRequest({ host, apiKey, docId, tableId, method: "POST", payload });
     return NextResponse.json(result);
   } catch (error) {
-    console.log(error);
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }
@@ -147,18 +145,9 @@ export async function PUT(request) {
     }
 
     const findData = await findResponse.json();
-
     let records = [];
     if (findData.records) {
       records = findData.records;
-    } else if (findData.rows && findData.columns) {
-      records = findData.rows.map(row => {
-        const rec = {};
-        findData.columns.forEach((col, i) => {
-          rec[col] = row[i];
-        });
-        return rec;
-      });
     }
 
     if (!records.length) {
@@ -245,17 +234,10 @@ export async function DELETE(request) {
       }
 
       const findData = await findResponse.json();
+
       let records = [];
       if (findData.records) {
         records = findData.records;
-      } else if (findData.rows && findData.columns) {
-        records = findData.rows.map((row) => {
-          const rec = {};
-          findData.columns.forEach((col, i) => {
-            rec[col] = row[i];
-          });
-          return rec;
-        });
       }
 
       if (!records.length) {

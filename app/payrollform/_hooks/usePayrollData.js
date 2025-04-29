@@ -13,7 +13,7 @@ export default function usePayrollData() {
   const [timeclock, setTimeclock] = useState([]);
   const [production, setProduction] = useState({});
 
-  const { data, error, mutate } = useSWR("/api/payrollData", fetcher);
+  const { data, error, mutate } = useSWR("/api/payrolldata", fetcher);
 
   useEffect(() => {
     if (data) {

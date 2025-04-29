@@ -3,15 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 5173",
-    "build": "next build",
-    "start": "next start -p 5173",
+    "dev": "cross-env TZ=America/New_York next dev -p 5173",
+    "build": "cross-env TZ=America/New_York next build",
+    "start": "cross-env TZ=America/New_York next start -p 5173",
     "lint": "next lint"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "@fontsource/roboto": "^5.2.5",
     "@mui/material": "^6.3.1",
+    "@react-pdf/renderer": "^4.3.0",
+    "cross-env": "^7.0.3",
     "next": "15.1.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

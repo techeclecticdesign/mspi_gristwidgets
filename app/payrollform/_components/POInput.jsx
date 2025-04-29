@@ -31,6 +31,9 @@ function POInput({ value, error, onChange, onBlur, projectName }) {
             lineHeight: "0.85",
             pl: 1,
           },
+          "& .MuiInputLabel-shrink": {
+            transform: "translate(0, -6px) scale(0.75)", // when shrunk, move slightly down
+          },
         }}
       />
       <p className="text-[0.6em] ml-1 flex font-normal h-4 overflow-hidden">{projectName}</p>

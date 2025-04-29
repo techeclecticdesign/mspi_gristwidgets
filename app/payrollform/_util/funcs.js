@@ -83,14 +83,12 @@ export const filterPayRecords = (payHours, mdoc, dateRange, weekRanges) => {
   const weekRange = weekRanges[dateRange];
   if (!weekRange) return [];
 
-  const weekStart = new Date(weekRange.start);
-  weekStart.setHours(0, 0, 0, 0);
-  const weekEnd = new Date(weekRange.end);
-  weekEnd.setHours(23, 59, 59, 999);
+  const ws = getLocalMidnightTs(weekRange.start);
+  const we = getLocalMidnightTs(weekRange.end) + 24 * 60 * 60 - 1;
 
   return payHours[mdoc].filter(record => {
-    const recordDate = new Date(record.date_worked * 1000);
-    return recordDate >= weekStart && recordDate <= weekEnd;
+    const ts = record.date_worked;
+    return ts >= ws && ts <= we;
   });
 };
 
@@ -103,6 +101,13 @@ export const sumForDayAndTime = (dayIndex, timeOfDay, laborData) => {
     }, 0).toFixed(2)
   );
 };
+
+/* Given a JS Date, zeroes it to local‐midnight and returns the UNIX epoch seconds. */
+export function getLocalMidnightTs(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return Math.floor(d.getTime() / 1000);
+}
 
 export const calcDefaultWage = (poNumber, mdoc, workers, production) => {
   const foundKey = Object.keys(production).find((key) => key === poNumber);
@@ -241,10 +246,6 @@ export function balanceLaborData(
       }
     });
   });
-
-  if (targetPeriods.length > 0) {
-    console.log("Found target periods for moving labor entries.");
-  }
 
   // Process target periods
   targetPeriods.forEach((targetInfo) => {

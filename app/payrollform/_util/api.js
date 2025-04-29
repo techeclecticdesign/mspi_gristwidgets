@@ -1,4 +1,4 @@
-import { getAggregatedWorkHours, daysOfWeek, validDaysOfWeek } from "./funcs";
+import { getAggregatedWorkHours, daysOfWeek, validDaysOfWeek, getLocalMidnightTs } from "./funcs";
 
 export async function updateBackendRecord(
   { filters, weekRanges, filteredTimeclock },
@@ -15,14 +15,15 @@ export async function updateBackendRecord(
   const actualDayIndex = daysOfWeek.findIndex(
     (day) => day.trim() !== "" && day === validDaysOfWeek[dayIndex]
   );
+
   const timeclock_hours = aggregatedWorkHours[daysOfWeek[actualDayIndex]][timeOfDay];
   workDate.setDate(workDate.getDate() + actualDayIndex);
-
+  const ts = getLocalMidnightTs(workDate);
   // Build the payload for the API.
   const payload = {
     mdoc: filters.mdoc,
     po_number: poNumber,
-    date_worked: Math.floor(workDate.getTime() / 1000),
+    date_worked: ts,
     date_entered: Math.floor(Date.now() / 1000),
     period: timeOfDay,
     laborsheet_hours: parseFloat(currentValue) || 0,
@@ -84,9 +85,10 @@ export async function updateBackendRecord(
 
 export async function deleteBackendRecord({ filters, workDate, poNumber, timeOfDay }) {
   try {
+    const ts = getLocalMidnightTs(workDate);
     const queryParams = new URLSearchParams({
       po_number: poNumber,
-      date_worked: Math.floor(workDate.getTime() / 1000),
+      date_worked: ts,
       period: timeOfDay,
     });
     const response = await fetch(`/api/payhours?${queryParams.toString()}`, {

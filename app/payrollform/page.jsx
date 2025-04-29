@@ -7,7 +7,6 @@ import Autocomplete from "@mui/material/Autocomplete";
 import Button from "@mui/material/Button";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
-import { useGrist } from "../grist";
 import LaborForWeekPO from "./_components/LaborForWeekPO";
 import {
     daysOfWeek,
@@ -17,13 +16,13 @@ import {
     formatDate,
     sumForDayAndTime,
     distributeRounded,
+    getLocalMidnightTs
 } from "./_util/funcs";
 import { updateBackendRecord, deleteBackendRecord, batchUpdateBackendRecords } from "./_util/api";
 import usePayrollData from "./_hooks/usePayrollData";
 import useLaborData from "./_hooks/useLaborData";
 
 export default function PayrollForm() {
-    const grist = useGrist();
     const weekRanges = useMemo(() => getWeekRanges(), []);
     const { payHours, setPayHours, workers, timeclock, production, mutate } = usePayrollData();
     const [filters, setFilters] = useState({ name: "", mdoc: "", dateRange: null });
@@ -41,7 +40,6 @@ export default function PayrollForm() {
             })),
         [workers]
     );
-
 
     const updateLaborEntry = (rowIndex, dayIndex, timeOfDay, value, errorFlag = false) => {
         setLaborData(prevData =>
@@ -83,7 +81,7 @@ export default function PayrollForm() {
             await deleteBackendRecord({ filters, workDate, poNumber, timeOfDay });
             setPayHours(prevPayHours => {
                 const newPayHours = { ...prevPayHours };
-                const targetTimestamp = Math.floor(new Date(workDate).getTime() / 1000);
+                const targetTimestamp = getLocalMidnightTs(workDate);
                 newPayHours[filters.mdoc] = newPayHours[filters.mdoc].filter(
                     record =>
                         record.po_number !== poNumber ||
@@ -118,17 +116,21 @@ export default function PayrollForm() {
 
         const { value, rate } = laborData[rowIndex].cells[dayIndex][timeOfDay];
         updateLaborEntry(rowIndex, dayIndex, timeOfDay, value, false);
-        const workDateStart = new Date(weekRanges[filters.dateRange].start);
-        workDateStart.setDate(workDateStart.getDate() + dayIndex);
-        const ts = Math.floor(workDateStart.getTime() / 1000);
-
+        const workDate = new Date(weekRanges[filters.dateRange].start);
+        workDate.setHours(0, 0, 0, 0);
+        const validDay = validDaysOfWeek[dayIndex];
+        const actualDayIndex = daysOfWeek.findIndex(
+            d => d.trim() !== "" && d === validDay
+        );
+        workDate.setDate(workDate.getDate() + actualDayIndex);
+        const ts = getLocalMidnightTs(workDate);
         pendingOnBlur.current = true;
         try {
             if (value === "") {
                 // Deletion
                 await deleteBackendRecord({
                     filters,
-                    workDate: workDateStart,
+                    workDate,
                     poNumber,
                     timeOfDay,
                 });
@@ -243,25 +245,6 @@ export default function PayrollForm() {
         newMap[mdocKey] = [...filtered, payload];
         return newMap;
     }
-
-
-    // Update local payHours after backend update.
-    const updateLocalPayHours = (mdocKey, poNumber, date_worked, period, payload = null) => {
-        setPayHours(prevPayHours => {
-            const newPayHours = { ...prevPayHours };
-            const targetTimestamp = Math.floor(new Date(date_worked).getTime() / 1000);
-            newPayHours[mdocKey] = newPayHours[mdocKey].filter(
-                record =>
-                    record.po_number !== poNumber ||
-                    record.date_worked !== targetTimestamp ||
-                    record.period !== period
-            );
-            if (payload) {
-                newPayHours[mdocKey].push(payload);
-            }
-            return newPayHours;
-        });
-    };
 
     const updateWorkerBalances = useCallback(
         (currentFilters = filters) => {
