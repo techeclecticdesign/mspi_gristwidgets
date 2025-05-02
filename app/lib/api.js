@@ -5,25 +5,24 @@ export async function fetchWithRetry(
   retries = 5,
   delay = 1000
 ) {
-  try {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      console.warn(`HTTP error! status: ${response.status}`);
-    }
+  const response = await fetch(url, options);
+
+  if (response.ok) {
     return response;
-  } catch (error) {
-    if (retries > 0) {
-      const jitter = Math.random() * 200;
-      const nextDelay = delay * 2 + jitter;
-      console.warn(
-        `Retrying ${url} in ${nextDelay.toFixed(0)}ms... (${retries} retries left)`
-      );
-      await new Promise((resolve) => setTimeout(resolve, nextDelay));
-      return fetchWithRetry(url, options, retries - 1, delay);
-    }
-    throw error;
+  } else if (retries > 0) {
+    const jitter = Math.random() * 200;
+    const nextDelay = delay * 2 + jitter;
+    console.warn(
+      `Non-OK response (${response.status}). Retrying ${url} in ${nextDelay.toFixed(0)}ms... (${retries} retries left)`
+    );
+    await new Promise((resolve) => setTimeout(resolve, nextDelay));
+    return fetchWithRetry(url, options, retries - 1, delay);
+  } else {
+    console.error(`Fetch failed for ${url} after all retries. Final status: ${response.status}`);
+    return null;
   }
 }
+
 
 async function sendGristRequest({ host, apiKey, url, method, payload }) {
   const response = await fetch(url, {
@@ -56,7 +55,6 @@ export async function sendGristDeleteRequest({ host, apiKey, docId, tableId, met
   return sendGristRequest({ host, apiKey, url, method, payload });
 }
 
-
 // group payHours by mdoc
 export function groupPayHoursByMdoc(records) {
   return records.reduce((acc, rec) => {
@@ -77,4 +75,15 @@ export function filterAndIndexWorkersByMdoc(records) {
       acc[fields.mdoc] = fields;
       return acc;
     }, {});
+}
+
+// index production standards by product_code
+export function indexProdStandByCode(records) {
+  return records.reduce((acc, { fields }) => {
+    const key = fields.product_code;
+    if (key != null) {
+      acc[key] = fields;
+    }
+    return acc;
+  }, {});
 }

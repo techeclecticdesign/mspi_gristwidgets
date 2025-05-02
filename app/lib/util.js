@@ -35,3 +35,26 @@ export const getWeekRanges = () => {
 
   return weekRanges;
 };
+
+/* calculate total wages paid by department for a particular po */
+export function calculateDeptWages(
+  payHours,
+  workers,
+  poNumber
+) {
+  const relevant = payHours.filter(r => r.po_number === poNumber);
+  const wagesByWorker = relevant.reduce((acc, rec) => {
+    const amount = rec.laborsheet_hours * rec.hourly_rate;
+    acc[rec.mdoc] = (acc[rec.mdoc] || 0) + amount;
+    return acc;
+  }, {});
+
+  const deptTotals = Object.entries(wagesByWorker).reduce((acc, [mdoc, total]) => {
+    const worker = workers.find(w => w.mdoc === mdoc);
+    const dept = worker?.payroll_dept ?? "Unknown";
+    acc[dept] = (acc[dept] || 0) + total;
+    return acc;
+  }, {});
+
+  return deptTotals;
+}

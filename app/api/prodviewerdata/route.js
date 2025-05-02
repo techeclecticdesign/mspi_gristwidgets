@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { groupPayHoursByMdoc, filterAndIndexWorkersByMdoc } from "@/app/lib/api";
+import {
+  groupPayHoursByMdoc,
+  filterAndIndexWorkersByMdoc,
+  indexProdStandByCode
+} from "@/app/lib/api";
 
 export async function GET(request) {
   const origin = new URL(request.url).origin;
@@ -8,13 +12,11 @@ export async function GET(request) {
     const [
       payRes,
       workersRes,
-      timeclockRes,
-      productionRes
+      prodstandardsRes
     ] = await Promise.all([
       fetch(`${origin}/api/payhours`),
       fetch(`${origin}/api/workers`),
-      fetch(`${origin}/api/timeclock`),
-      fetch(`${origin}/api/production`)
+      fetch(`${origin}/api/prodstandards`)
     ]);
 
     if (!payRes.ok) {
@@ -31,34 +33,24 @@ export async function GET(request) {
       );
     }
 
-    if (!timeclockRes.ok) {
+    if (!prodstandardsRes.ok) {
       return NextResponse.json(
-        { error: `Timeclock failed: ${timeclockRes.statusText}` },
-        { status: timeclockRes.status }
-      );
-    }
-
-    if (!productionRes.ok) {
-      return NextResponse.json(
-        { error: `Production failed: ${productionRes.statusText}` },
-        { status: productionRes.status }
+        { error: `ProdStandards failed: ${prodstandardsRes.statusText}` },
+        { status: prodstandardsRes.status }
       );
     }
 
     const payJson = await payRes.json();
     const workersJson = await workersRes.json();
-    const timeclockJson = await timeclockRes.json();
-    const productionJson = await productionRes.json();
-
+    const prodstandardsJson = await prodstandardsRes.json()
     const payHours = groupPayHoursByMdoc(payJson.records);
     const workers = filterAndIndexWorkersByMdoc(workersJson.records);
+    const prodStandards = indexProdStandByCode(prodstandardsJson.records);
 
-    const timeclock = timeclockJson.records;
-    const production = productionJson;
 
-    return NextResponse.json({ payHours, workers, timeclock, production });
+    return NextResponse.json({ payHours, workers, prodStandards });
   } catch (err) {
-    console.error("Error in /api/payrollData:", err);
+    console.error("Error in /api/projectdata:", err);
     return NextResponse.json(
       { error: err.message || "Internal Server Error" },
       { status: 500 }
