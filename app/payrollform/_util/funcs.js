@@ -8,7 +8,7 @@ const aggregateWorkHours = (records) => {
   });
 
   const enrichedRecords = records.map(record => {
-    const timestamp = record.fields.scan_datetime;
+    const timestamp = record.scan_datetime;
     const dateObj = new Date(timestamp * 1000);
     return { ...record, dateObj };
   });
@@ -18,9 +18,9 @@ const aggregateWorkHours = (records) => {
   // stack method for pairing "In" / "Out" records.
   const inStack = [];
   for (let rec of enrichedRecords) {
-    if (rec.fields.status === "In") {
+    if (rec.status === "In") {
       inStack.push(rec);
-    } else if (rec.fields.status === "Out" && inStack.length) {
+    } else if (rec.status === "Out" && inStack.length) {
       const inRec = inStack.shift();
       if (rec.dateObj > inRec.dateObj) {
         const inTime = inRec.dateObj;

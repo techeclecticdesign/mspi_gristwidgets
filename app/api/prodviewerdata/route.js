@@ -1,59 +1,29 @@
 import { NextResponse } from "next/server";
 import {
-  groupPayHoursByMdoc,
   filterAndIndexWorkersByMdoc,
-  indexProdStandByCode
+  indexByPkField,
+  batchFetch
 } from "@/app/lib/api";
+import { getHttpErrorResponse } from "@/app/lib/errors";
 
 export async function GET(request) {
   const origin = new URL(request.url).origin;
 
   try {
     const [
-      payRes,
-      workersRes,
-      prodstandardsRes
-    ] = await Promise.all([
-      fetch(`${origin}/api/payhours`),
-      fetch(`${origin}/api/workers`),
-      fetch(`${origin}/api/prodstandards`)
-    ]);
-
-    if (!payRes.ok) {
-      return NextResponse.json(
-        { error: `PayHours failed: ${payRes.statusText}` },
-        { status: payRes.status }
-      );
-    }
-
-    if (!workersRes.ok) {
-      return NextResponse.json(
-        { error: `Workers failed: ${workersRes.statusText}` },
-        { status: workersRes.status }
-      );
-    }
-
-    if (!prodstandardsRes.ok) {
-      return NextResponse.json(
-        { error: `ProdStandards failed: ${prodstandardsRes.statusText}` },
-        { status: prodstandardsRes.status }
-      );
-    }
-
-    const payJson = await payRes.json();
-    const workersJson = await workersRes.json();
-    const prodstandardsJson = await prodstandardsRes.json()
-    const payHours = groupPayHoursByMdoc(payJson.records);
-    const workers = filterAndIndexWorkersByMdoc(workersJson.records);
-    const prodStandards = indexProdStandByCode(prodstandardsJson.records);
-
-
+      payJson,
+      workersJson,
+      prodstandardsJson
+    ] = await batchFetch(
+      `${origin}/api/payhours`,
+      `${origin}/api/workers`,
+      `${origin}/api/prodstandards`
+    );
+    const payHours = indexByPkField(payJson, "mdoc");
+    const workers = filterAndIndexWorkersByMdoc(workersJson);
+    const prodStandards = indexByPkField(prodstandardsJson, "product_code");
     return NextResponse.json({ payHours, workers, prodStandards });
   } catch (err) {
-    console.error("Error in /api/projectdata:", err);
-    return NextResponse.json(
-      { error: err.message || "Internal Server Error" },
-      { status: 500 }
-    );
+    return getHttpErrorResponse("GET /api/prodviewerdata", err);
   }
 }

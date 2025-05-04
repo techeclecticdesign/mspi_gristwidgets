@@ -2,10 +2,9 @@ import { getAggregatedWorkHours, daysOfWeek, validDaysOfWeek, getLocalMidnightTs
 
 export async function updateBackendRecord(
   { filters, weekRanges, filteredTimeclock },
-  { rowIndex, dayIndex, timeOfDay, poNumber, value, rate }
+  { dayIndex, timeOfDay, poNumber, value, rate }
 ) {
   if (filters.dateRange === null || filters.mdoc.trim() === "") return;
-
   const selectedWeek = weekRanges[filters.dateRange];
   const workDate = new Date(selectedWeek.start);
   const currentValue = value;
@@ -38,17 +37,17 @@ export async function updateBackendRecord(
   }
 
   const queryParams = new URLSearchParams({
-    po_number: poNumber,
-    date_worked: payload.date_worked,
+    ponumber: poNumber,
+    dateworked: payload.date_worked,
     period: timeOfDay,
+    mdoc: filters.mdoc
   });
   const checkResponse = await fetch(`/api/payhours?${queryParams.toString()}`);
   if (!checkResponse.ok) {
     throw new Error(`HTTP error during check! status: ${checkResponse.status}`);
   }
   const existingRecords = await checkResponse.json();
-
-  if (existingRecords.records.length > 0) {
+  if (existingRecords.length > 0) {
     const updatePayload = {
       po_number: payload.po_number,
       date_worked: payload.date_worked,
@@ -59,7 +58,7 @@ export async function updateBackendRecord(
       date_entered: payload.date_entered,
     };
     const updateResponse = await fetch("/api/payhours", {
-      method: "PUT",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatePayload),
     });
@@ -83,7 +82,7 @@ export async function updateBackendRecord(
   return payload;
 }
 
-export async function deleteBackendRecord({ filters, workDate, poNumber, timeOfDay }) {
+export async function deleteBackendRecord({ workDate, poNumber, timeOfDay }) {
   try {
     const ts = getLocalMidnightTs(workDate);
     const queryParams = new URLSearchParams({
