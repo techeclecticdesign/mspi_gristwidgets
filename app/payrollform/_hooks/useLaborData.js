@@ -82,10 +82,10 @@ export default function useLaborData(payHours, weekRanges, filters, timeclock) {
     const currentRange = weekRanges[filters.dateRange];
     if (!currentRange) return {};
     const filteredTimeclock = timeclock
-      .filter(record => record.fields.mdoc.toString() === filters.mdoc.trim())
+      .filter(record => record.mdoc.toString() === filters.mdoc.trim())
       .filter(record => {
-        if (!record.fields.scan_datetime) return false;
-        const scanDate = new Date(record.fields.scan_datetime * 1000).getTime();
+        if (!record.scan_datetime) return false;
+        const scanDate = new Date(record.scan_datetime * 1000).getTime();
         return (
           scanDate >= currentRange.start.getTime() &&
           scanDate <= currentRange.end.getTime()

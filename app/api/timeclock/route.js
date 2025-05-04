@@ -1,34 +1,23 @@
 import { NextResponse } from "next/server";
-import { fetchWithRetry } from "@/app/lib/api";
+import { env, ensureEnv, fetchWithRetry, unwrapGristRecords } from "@/app/lib/api";
+import { getHttpErrorResponse } from "@/app/lib/errors";
 
 export async function GET() {
-  const host = process.env.NEXT_PUBLIC_GRIST_HOST;
-  const apiKey = process.env.API_KEY;
-  const docId = process.env.WOODSHOP_DOC;
-
-  if (!apiKey || !docId) {
-    return NextResponse.json({ error: "Missing Grist API key or document ID" }, { status: 500 });
-  }
-
-  const today = new Date();
-  const sixWeeksAgo = new Date();
-  sixWeeksAgo.setDate(today.getDate() - 42);
-  const gristUrl = `${host}/api/docs/${docId}/sql?q=${encodeURIComponent(
-    `SELECT * FROM TimeclockHours WHERE scan_datetime > ${sixWeeksAgo.getTime() / 1000}`
-  )}`;
-
   try {
-    const response = await fetchWithRetry(gristUrl, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-
-    if (!response.ok) {
-      return NextResponse.json({ error: "Failed to fetch PayHours data" }, { status: response.status });
-    }
-
-    const data = await response.json();
-    return NextResponse.json(data);
+    ensureEnv();
+    const { host, apiKey, docId } = env;
+    const today = new Date();
+    const sixWeeksAgo = new Date();
+    sixWeeksAgo.setDate(today.getDate() - 42);
+    const gristUrl = `${host}/api/docs/${docId}/sql?q=${encodeURIComponent(
+      `SELECT * FROM TimeclockHours WHERE scan_datetime > ${sixWeeksAgo.getTime() / 1000}`
+    )}`;
+    const data = await fetchWithRetry(
+      gristUrl,
+      { headers: { Authorization: `Bearer ${apiKey}` } }
+    );
+    return NextResponse.json(unwrapGristRecords(data));
   } catch (error) {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return getHttpErrorResponse("GET /api/timeclock", error);
   }
 }

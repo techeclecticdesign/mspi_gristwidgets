@@ -1,121 +1,70 @@
 import { NextResponse } from "next/server";
-import { fetchWithRetry, sendGristTableRequest } from "@/app/lib/api";
+import { sendGristTableRequest, groupByField } from "@/app/lib/api";
+import { getGristSqlRecords, getGristSqlRecordId } from "@/app/lib/sql";
+import { getHttpErrorResponse, HTTPError } from "@/app/lib/errors";
 
-export async function GET() {
-  const host = process.env.NEXT_PUBLIC_GRIST_HOST;
-  const apiKey = process.env.API_KEY;
-  const docId = process.env.WOODSHOP_DOC;
-  const gristUrl = `${host}/api/docs/${docId}/tables/Production/records`;
+const tableId = "Production";
 
-  if (!apiKey || !docId) {
-    return NextResponse.json(
-      { error: "Missing Grist API key or document ID" },
-      { status: 500 }
-    );
+/* Fetches the Production record ID for a given po_number. */
+async function findProductionRecordId(po_number) {
+  const id = await getGristSqlRecordId("Production", { filters: { po_number } });
+  if (!id) {
+    throw new HTTPError("Production record not found", 404);
   }
+  return id;
+}
 
+async function updateProductionRecord(recordId, fields) {
+  const payload = { records: [{ id: recordId, fields }] };
+  return sendGristTableRequest({
+    tableId,
+    method: "PATCH",
+    payload,
+  });
+}
+
+export async function GET(req) {
   try {
-    const response = await fetchWithRetry(gristUrl, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+    const { searchParams } = new URL(req.url);
+    const po_number = searchParams.get("ponumber") ?? undefined;
+    const product_code = searchParams.get("productcode") ?? undefined;
+
+    const filters = {};
+    if (po_number) filters.po_number = [po_number];
+    if (product_code) filters.product_code = [product_code];
+
+    const records = await getGristSqlRecords("Production", {
+      filters: Object.keys(filters).length > 0 ? filters : undefined,
     });
 
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch Production data" },
-        { status: response.status }
-      );
+    if (!records.length) {
+      throw new HTTPError("No records matched with provided filters.", 404);
     }
-
-    const { records } = await response.json();
-
-    const transformedData = records.reduce(
-      (acc, record) => {
-        const { po_number, ...rest } = record.fields;
-        if (po_number) acc[po_number] = rest;
-        return acc;
-      },
-      {}
-    );
-
-    return NextResponse.json(transformedData);
-  } catch (error) {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    if (searchParams.toString() === "") {
+      return NextResponse.json(records, {
+        headers: { "x-nextjs-tags": "production" },
+      });
+    } else {
+      return NextResponse.json(records);
+    }
+  } catch (err) {
+    return getHttpErrorResponse("GET /api/production", err);
   }
 }
 
-export async function PUT(request) {
-  const host = process.env.NEXT_PUBLIC_GRIST_HOST;
-  const apiKey = process.env.API_KEY;
-  const docId = process.env.WOODSHOP_DOC;
-  const tableId = "Production";
-
-  if (!apiKey || !docId) {
-    return NextResponse.json(
-      { error: "Missing Grist API key or document ID" },
-      { status: 500 }
-    );
-  }
-
+export async function PATCH(request) {
   try {
     const body = await request.json();
     const { po_number, payable_on_nh_days } = body;
-
     if (!po_number || payable_on_nh_days === undefined) {
-      return NextResponse.json(
-        { error: "Missing required fields: po_number and payable_on_nh_days" },
-        { status: 400 }
-      );
+      throw new HTTPError("Missing required fields: po_number and payable_on_nh_days", 400)
     }
-
-    // Query the Production table for the record with the given po_number.
-    const query = `SELECT * FROM Production WHERE po_number = '${po_number}'`;
-    const gristQueryUrl = `${host}/api/docs/${docId}/sql?q=${encodeURIComponent(query)}`;
-    const findResponse = await fetch(gristQueryUrl, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+    const recordId = await findProductionRecordId(body.po_number);
+    const result = await updateProductionRecord(recordId, {
+      payable_on_nh_days: body.payable_on_nh_days,
     });
-
-    if (!findResponse.ok) {
-      throw new Error(`Failed to find production record: ${await findResponse.text()}`);
-    }
-
-    const findData = await findResponse.json();
-    let records = [];
-    if (findData.records) {
-      records = findData.records;
-    }
-
-    if (!records.length) {
-      return NextResponse.json({ error: "Production record not found" }, { status: 404 });
-    }
-
-    const recordId = records[0].fields.id;
-    if (!recordId) {
-      throw new Error("Record id not found in the fetched record");
-    }
-
-    const updatePayload = {
-      records: [
-        {
-          id: recordId,
-          fields: {
-            payable_on_nh_days,
-          },
-        },
-      ],
-    };
-    console.log(updatePayload);
-    const updateResponse = await sendGristTableRequest({
-      host,
-      apiKey,
-      docId,
-      tableId,
-      method: "PATCH",
-      payload: updatePayload,
-    });
-
-    return NextResponse.json(updateResponse);
+    return NextResponse.json(result);
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    return getHttpErrorResponse("PATCH /api/production", error);
   }
 }
