@@ -1,9 +1,10 @@
-import { fetchWithRetry } from "@/app/lib/api";
+import { fetchWithRetry, env } from "@/app/lib/api";
 import React from "react";
 import { renderToStream } from "@react-pdf/renderer";
-import { PayrollReport, PayrollRow } from "@/app/pdf/payrollReport";
+import { PayrollReport } from "@/app/pdf/payrollReport";
 
 export async function GET(req) {
+  const { host, apiKey, docId } = env;
   const { searchParams } = new URL(req.url);
   const startParam = searchParams.get("start");
   const endParam = searchParams.get("end");
@@ -18,9 +19,6 @@ export async function GET(req) {
   const sql = `SELECT * FROM PayHours
     WHERE date(date_worked,'unixepoch') >= date(${startSec},'unixepoch')
       AND date(date_worked,'unixepoch') <= date(${endSec},'unixepoch')`;
-  const host = process.env.NEXT_PUBLIC_GRIST_HOST;
-  const apiKey = process.env.API_KEY;
-  const docId = process.env.WOODSHOP_DOC;
   const url = `${host}/api/docs/${docId}/sql?q=${encodeURIComponent(sql)}`;
 
   const res = await fetchWithRetry(url, {

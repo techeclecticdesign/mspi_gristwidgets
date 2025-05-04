@@ -1,32 +1,42 @@
 import { NextResponse } from "next/server";
-import { fetchWithRetry, sendGristTableRequest } from "@/app/lib/api";
+import { env, ensureEnv, fetchAndThrow } from "@/app/lib/api";
+import { getGristSqlRecordId } from "@/app/lib/sql";
+
+const { host, apiKey, docId } = env;
+const tableId = "Production";
+
+/* Fetches the Production record ID for a given po_number. */
+async function findProductionRecordId(po_number) {
+  const id = await getGristSqlRecordId("Production", { po_number });
+  if (!id) {
+    throw new Error("Production record not found");
+  }
+  return id;
+}
+
+async function updateProductionRecord(recordId, fields) {
+  const payload = { records: [{ id: recordId, fields }] };
+  return sendGristTableRequest({
+    host,
+    apiKey,
+    docId,
+    tableId,
+    method: "PATCH",
+    payload,
+  });
+}
 
 export async function GET() {
-  const host = process.env.NEXT_PUBLIC_GRIST_HOST;
-  const apiKey = process.env.API_KEY;
-  const docId = process.env.WOODSHOP_DOC;
+  const envError = ensureEnv();
+  if (envError) return envError;
   const gristUrl = `${host}/api/docs/${docId}/tables/Production/records`;
 
-  if (!apiKey || !docId) {
-    return NextResponse.json(
-      { error: "Missing Grist API key or document ID" },
-      { status: 500 }
-    );
-  }
-
   try {
-    const response = await fetchWithRetry(gristUrl, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch Production data" },
-        { status: response.status }
-      );
-    }
-
-    const { records } = await response.json();
+    const [json] = await fetchAndThrow(
+      gristUrl,
+      { headers: { Authorization: `Bearer ${apiKey}` } }
+    );
+    const { records } = json;
 
     const transformedData = records.reduce(
       (acc, record) => {
@@ -37,25 +47,21 @@ export async function GET() {
       {}
     );
 
-    return NextResponse.json(transformedData);
+    return NextResponse.json(transformedData, {
+      headers: {
+        'x-nextjs-tags': 'production',
+      },
+    });
   } catch (error) {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const status = error.status || 500;
+    const message = error.message || "Internal server error";
+    return NextResponse.json({ error: message }, { status });
   }
 }
 
 export async function PUT(request) {
-  const host = process.env.NEXT_PUBLIC_GRIST_HOST;
-  const apiKey = process.env.API_KEY;
-  const docId = process.env.WOODSHOP_DOC;
-  const tableId = "Production";
-
-  if (!apiKey || !docId) {
-    return NextResponse.json(
-      { error: "Missing Grist API key or document ID" },
-      { status: 500 }
-    );
-  }
-
+  const envError = ensureEnv();
+  if (envError) return envError;
   try {
     const body = await request.json();
     const { po_number, payable_on_nh_days } = body;
@@ -66,54 +72,11 @@ export async function PUT(request) {
         { status: 400 }
       );
     }
-
-    // Query the Production table for the record with the given po_number.
-    const query = `SELECT * FROM Production WHERE po_number = '${po_number}'`;
-    const gristQueryUrl = `${host}/api/docs/${docId}/sql?q=${encodeURIComponent(query)}`;
-    const findResponse = await fetch(gristQueryUrl, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+    const recordId = await findProductionRecordId(body.po_number);
+    const result = await updateProductionRecord(recordId, {
+      payable_on_nh_days: body.payable_on_nh_days,
     });
-
-    if (!findResponse.ok) {
-      throw new Error(`Failed to find production record: ${await findResponse.text()}`);
-    }
-
-    const findData = await findResponse.json();
-    let records = [];
-    if (findData.records) {
-      records = findData.records;
-    }
-
-    if (!records.length) {
-      return NextResponse.json({ error: "Production record not found" }, { status: 404 });
-    }
-
-    const recordId = records[0].fields.id;
-    if (!recordId) {
-      throw new Error("Record id not found in the fetched record");
-    }
-
-    const updatePayload = {
-      records: [
-        {
-          id: recordId,
-          fields: {
-            payable_on_nh_days,
-          },
-        },
-      ],
-    };
-    console.log(updatePayload);
-    const updateResponse = await sendGristTableRequest({
-      host,
-      apiKey,
-      docId,
-      tableId,
-      method: "PATCH",
-      payload: updatePayload,
-    });
-
-    return NextResponse.json(updateResponse);
+    return NextResponse.json(result);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });

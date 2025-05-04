@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { fetchWithRetry, sendGristTableRequest, sendGristDeleteRequest } from "@/app/lib/api";
+import { revalidateTag } from 'next/cache';
+import { env, ensureEnv, sendGristTableRequest, sendGristDeleteRequest } from "@/app/lib/api";
+import { getGristSqlRecords, getGristSqlRecordId } from "@/app/lib/sql";
+
+const { host, apiKey, docId } = env;
+const tableId = 'PayHours';
 
 function buildEntry(body) {
   const { mdoc, po_number, date_worked, period, laborsheet_hours, hourly_rate, timeclock_hours } = body;
@@ -34,62 +39,48 @@ function buildEntry(body) {
   };
 }
 
-export async function GET(request) {
-  const host = process.env.NEXT_PUBLIC_GRIST_HOST;
-  const apiKey = process.env.API_KEY;
-  const docId = process.env.WOODSHOP_DOC;
-
-  if (!apiKey || !docId) {
-    return NextResponse.json({ error: "Missing Grist API key or document ID" }, { status: 500 });
-  }
-
-  const url = new URL(request.url);
-  const searchParams = url.searchParams;
-
-  const po_number = searchParams.get("po_number");
-  const date_worked = searchParams.get("date_worked");
-  const period = searchParams.get("period");
-
-  let query = "SELECT * FROM PayHours WHERE 1=1";
-
-  if (po_number) {
-    query += ` AND po_number = '${po_number}'`;
-  }
-  if (date_worked) {
-    query += ` AND date(date_worked, 'unixepoch') = date(${date_worked}, 'unixepoch')`;
-  }
-  if (period) {
-    query += ` AND period = '${period}'`;
-  }
-
-  const gristUrl = `${host}/api/docs/${docId}/sql?q=${encodeURIComponent(query)}`;
-
-  try {
-    const response = await fetchWithRetry(gristUrl, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-
-    if (!response.ok) {
-      return NextResponse.json({ error: "Failed to fetch PayHours data" }, { status: response.status });
-    }
-
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+function validateBody(body) {
+  const missing = [];
+  if (!body.po_number) missing.push('po_number');
+  if (body.date_worked === undefined) missing.push('date_worked');
+  if (!body.period) missing.push('period');
+  ['laborsheet_hours', 'hourly_rate', 'timeclock_hours']
+    .forEach(f => body[f] === undefined && missing.push(f));
+  if (missing.length) {
+    throw new Error(`Missing required fields: ${missing.join(', ')}`);
   }
 }
 
+export async function GET(request) {
+  const envErr = ensureEnv();
+  if (envErr) return envErr;
+
+  const { searchParams } = new URL(request.url);
+  const filters = {
+    po_number: searchParams.get("po_number") ?? undefined,
+    date_worked: searchParams.get("date_worked") ?? undefined,
+    period: searchParams.get("period") ?? undefined,
+  };
+
+  try {
+    const records = await getGristSqlRecords(tableId, { filters });
+    return NextResponse.json({ records }, {
+      headers: {
+        'x-nextjs-tags': 'payhours'
+      }
+    });
+  } catch (error) {
+    console.error("GET /api/payhours error:", error);
+    return NextResponse.json(
+      { error: error.message || "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request) {
-  const host = process.env.NEXT_PUBLIC_GRIST_HOST;
-  const apiKey = process.env.API_KEY;
-  const docId = process.env.WOODSHOP_DOC;
-  const tableId = "PayHours";
-
-  if (!apiKey || !docId) {
-    return NextResponse.json({ error: "Missing Grist API key or document ID" }, { status: 500 });
-  }
+  const envErr = ensureEnv();
+  if (envErr) return envErr;
 
   try {
     const body = await request.json();
@@ -100,175 +91,82 @@ export async function POST(request) {
     };
 
     const result = await sendGristTableRequest({ host, apiKey, docId, tableId, method: "POST", payload });
+    revalidateTag('payhours');
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }
 
-export async function PUT(request) {
-  const host = process.env.NEXT_PUBLIC_GRIST_HOST;
-  const apiKey = process.env.API_KEY;
-  const docId = process.env.WOODSHOP_DOC;
-  const tableId = "PayHours";
+async function updateRecord(recordId, body) {
+  const payload = {
+    records: [{
+      id: recordId,
+      fields: {
+        laborsheet_hours: body.laborsheet_hours,
+        hourly_rate: body.hourly_rate,
+        timeclock_hours: body.timeclock_hours,
+        date_entered: Math.floor(Date.now() / 1000),
+      }
+    }]
+  };
+  return sendGristTableRequest({
+    host, apiKey, docId, tableId,
+    method: 'PATCH', payload, recordId: ''
+  });
+}
 
-  if (!apiKey || !docId) {
-    return NextResponse.json(
-      { error: "Missing Grist API key or document ID" },
-      { status: 500 }
-    );
-  }
+async function deleteRecord(recordId) {
+  return sendGristDeleteRequest({ host, apiKey, docId, tableId, method: "POST", payload: [recordId] });
+}
+
+export async function PUT(request) {
 
   try {
     const body = await request.json();
+    validateBody(body);
 
-    if (
-      !body.po_number ||
-      !body.date_worked ||
-      !body.period ||
-      body.laborsheet_hours === undefined ||
-      body.hourly_rate === undefined ||
-      body.timeclock_hours === undefined
-    ) {
-      throw new Error("Missing one or more required fields");
-    }
-
-    const query = `SELECT * FROM PayHours WHERE po_number = '${body.po_number}' AND date(date_worked, 'unixepoch') = date(${body.date_worked}, 'unixepoch') AND period = '${body.period}'`;
-    const gristQueryUrl = `${host}/api/docs/${docId}/sql?q=${encodeURIComponent(query)}`;
-
-    const findResponse = await fetch(gristQueryUrl, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+    const id = await getGristSqlRecordId(tableId, {
+      filters: {
+        po_number: body.po_number,
+        date_worked: body.date_worked,
+        period: body.period,
+      }
     });
-
-    if (!findResponse.ok) {
-      throw new Error(`Failed to find record: ${await findResponse.text()}`);
-    }
-
-    const findData = await findResponse.json();
-    let records = [];
-    if (findData.records) {
-      records = findData.records;
-    }
-
-    if (!records.length) {
-      return NextResponse.json({ error: "Record not found" }, { status: 404 });
-    }
-
-    const recordId = records[0].fields.id;
-    if (!recordId) {
-      throw new Error("Record id not found in the fetched record");
-    }
-
-    const updatePayload = {
-      records: [
-        {
-          id: recordId,
-          fields: {
-            laborsheet_hours: body.laborsheet_hours,
-            hourly_rate: body.hourly_rate,
-            timeclock_hours: body.timeclock_hours,
-            date_entered: Math.floor(Date.now() / 1000),
-          },
-        },
-      ],
-    };
-
-    const updateResponse = await sendGristTableRequest({
-      host,
-      apiKey,
-      docId,
-      tableId,
-      method: "PATCH",
-      payload: updatePayload,
-      recordId: "",
-    });
-
-    return NextResponse.json(updateResponse);
-  } catch (error) {
-    console.log(error);
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    );
+    const result = await updateRecord(id, body);
+    revalidateTag('payhours');
+    return NextResponse.json(result);
+  }
+  catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }
 
 let deletionQueue = Promise.resolve();
 
 export async function DELETE(request) {
-  const result = await (deletionQueue = deletionQueue.then(async () => {
-    const host = process.env.NEXT_PUBLIC_GRIST_HOST;
-    const apiKey = process.env.API_KEY;
-    const docId = process.env.WOODSHOP_DOC;
-    const tableId = "PayHours";
-
-    if (!apiKey || !docId) {
+  return (deletionQueue = deletionQueue.then(async () => {
+    const envErr = ensureEnv();
+    if (envErr) return envErr;
+    const { searchParams } = new URL(request.url);
+    const po_number = searchParams.get("po_number") || "";
+    const date_worked = searchParams.get("date_worked") || "";
+    const period = searchParams.get("period") || "";
+    if (!po_number || !date_worked || !period) {
       return NextResponse.json(
-        { error: "Missing Grist API key or document ID" },
-        { status: 500 }
+        { error: "Missing required query params: po_number, date_worked, period" },
+        { status: 400 }
       );
     }
-
     try {
-      const url = new URL(request.url);
-      const searchParams = url.searchParams;
-      const po_number = searchParams.get("po_number");
-      const date_worked = searchParams.get("date_worked");
-      const period = searchParams.get("period");
-      if (!po_number || !date_worked || !period) {
-        throw new Error("Missing one or more required query parameters: po_number, date_worked, period");
-      }
-
-      let query = `SELECT * FROM PayHours WHERE po_number = '${po_number}'`;
-      query += ` AND date(date_worked, 'unixepoch') = date(${date_worked}, 'unixepoch')`;
-      query += ` AND period = '${period}'`;
-
-      const gristQueryUrl = `${host}/api/docs/${docId}/sql?q=${encodeURIComponent(query)}`;
-
-      const findResponse = await fetch(gristQueryUrl, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      });
-
-      if (!findResponse.ok) {
-        throw new Error(`Failed to find record: ${await findResponse.text()}`);
-      }
-
-      const findData = await findResponse.json();
-
-      let records = [];
-      if (findData.records) {
-        records = findData.records;
-      }
-
-      if (!records.length) {
-        return NextResponse.json({ error: "Record not found" }, { status: 404 });
-      }
-
-      const recordId = records[0].fields.id;
-      if (!recordId) {
-        throw new Error("Record id not found in the fetched record");
-      }
-
-      const payload = [recordId];
-
-      const deleteResponse = await sendGristDeleteRequest({
-        host,
-        apiKey,
-        docId,
-        tableId,
-        method: "POST",
-        payload,
-      });
-
-      return NextResponse.json(deleteResponse);
+      const id = await getGristSqlRecordId(tableId, { filters: { po_number, date_worked, period } });
+      const result = await deleteRecord(id);
+      revalidateTag('payhours');
+      return NextResponse.json(result);
     } catch (error) {
       console.error(error);
-      return NextResponse.json(
-        { error: error.message || "Internal server error" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
     }
   }));
-
-  return result;
 }

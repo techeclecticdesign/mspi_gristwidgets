@@ -1,7 +1,13 @@
-// app/api/backfillDerivedData/route.js
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache'
+import { env, ensureEnv } from "@/app/lib/api";
+
+const { host, apiKey, docId } = env;
 
 export async function POST() {
+  const envErr = ensureEnv();
+  if (envErr) return envErr;
+
   try {
     const result = await backfillDerivedData();
     return NextResponse.json({ success: true, ...result });
@@ -11,19 +17,12 @@ export async function POST() {
   }
 }
 
-const GRIST_HOST = process.env.NEXT_PUBLIC_GRIST_HOST;
-const API_KEY = process.env.API_KEY;
-const DOC_ID = process.env.WOODSHOP_DOC;
-const PRODUCTION = 'Production';
-const WORKERS = 'Workers';
-
-// helpers
 async function fetchRecords(tableId) {
   const res = await fetch(
-    `${GRIST_HOST}/api/docs/${DOC_ID}/tables/${tableId}/records`,
+    `${host}/api/docs/${docId}/tables/${tableId}/records`,
     {
       headers: {
-        Authorization: `Bearer ${API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
     }
   );
@@ -36,12 +35,12 @@ async function fetchRecords(tableId) {
 
 async function patchRecords(tableId, records) {
   const res = await fetch(
-    `${GRIST_HOST}/api/docs/${DOC_ID}/tables/${tableId}/records`,
+    `${host}/api/docs/${docId}/tables/${tableId}/records`,
     {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({ records }),
     }
@@ -56,8 +55,8 @@ async function patchRecords(tableId, records) {
  * were not present in the old server */
 async function backfillDerivedData() {
   const [prodRecs, workerRecs] = await Promise.all([
-    fetchRecords(PRODUCTION),
-    fetchRecords(WORKERS),
+    fetchRecords("Production"),
+    fetchRecords("Workers"),
   ]);
 
   const payrollMap = workerRecs.reduce((map, r) => {
@@ -73,7 +72,8 @@ async function backfillDerivedData() {
     }));
 
   if (toUpdate.length > 0) {
-    const patched = await patchRecords(PRODUCTION, toUpdate);
+    const patched = await patchRecords("Production", toUpdate);
+    revalidateTag('production')
     return { updated: toUpdate.length, patched };
   }
 
