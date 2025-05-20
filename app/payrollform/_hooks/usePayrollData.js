@@ -27,7 +27,6 @@ export default function usePayrollData() {
   const refreshAll = useCallback(() => {
     mutate();
   }, [mutate]);
-
   return {
     payHours,
     setPayHours,

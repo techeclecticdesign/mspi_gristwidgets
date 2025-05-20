@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -8,10 +8,10 @@ import Button from "@mui/material/Button";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import LaborForWeekPO from "./_components/LaborForWeekPO";
+import { getWeekRanges } from '/app/lib/util.js';
 import {
     daysOfWeek,
     validDaysOfWeek,
-    getWeekRanges,
     balanceLaborData,
     formatDate,
     sumForDayAndTime,
@@ -58,24 +58,6 @@ export default function PayrollForm() {
         );
     };
 
-    const handlePoChange = useCallback(
-        (rowIndex, newPo) => {
-            setLaborData(prev =>
-                prev.map((entry, idx) =>
-                    idx === rowIndex ? { ...entry, po_number: newPo } : entry
-                )
-            );
-        },
-        [setLaborData]
-    );
-
-    const handleLaborChange = useCallback((rowIndex, dayIndex, timeOfDay, value) => {
-        const isError = value === "" ? false : !/^[+-]?(\d+(\.\d*)?|(\.\d+))$/.test(value);
-        updateLaborEntry(rowIndex, dayIndex, timeOfDay, value, isError);
-    },
-        [updateLaborEntry]
-    );
-
     const deleteBackendRecordHandler = async (poNumber, workDate, timeOfDay) => {
         try {
             await deleteBackendRecord({ filters, workDate, poNumber, timeOfDay });
@@ -94,6 +76,137 @@ export default function PayrollForm() {
             console.error("Error deleting record:", error);
         }
     };
+
+    const handlePoChange = useCallback(
+        async (rowIndex, newPo) => {
+            const oldPo = laborData[rowIndex].po_number;
+
+            // optimistic state update
+            setLaborData(prev =>
+                prev.map((entry, idx) =>
+                    idx === rowIndex ? { ...entry, po_number: newPo } : entry
+                )
+            );
+
+            try {
+                const start = weekRanges[filters.dateRange].start;
+                const dateMap = {};
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date(start);
+                    d.setHours(0, 0, 0, 0);
+                    d.setDate(start.getDate() + i);
+                    const abbr = d.toLocaleDateString("en-US", { weekday: "short" });
+                    dateMap[abbr] = d;
+                }
+
+                // Delete PO
+                if (oldPo && newPo.trim() === "") {
+                    const dels = [];
+
+                    laborData[rowIndex].cells.forEach((cell, vi) => {
+                        ["AM", "PM"].forEach(period => {
+                            const { value } = cell[period];
+                            if (!value) return;
+
+                            const dayAbbr = validDaysOfWeek[vi];
+                            const wd = dateMap[dayAbbr];
+                            if (!wd) return;
+
+                            dels.push(deleteBackendRecordHandler(oldPo, wd, period));
+                        });
+                    });
+
+                    await Promise.all(dels);
+
+                    // clear out state
+                    setLaborData(prev =>
+                        prev.map((entry, idx) =>
+                            idx === rowIndex
+                                ? {
+                                    ...entry,
+                                    po_number: "",
+                                    cells: entry.cells.map(() => ({
+                                        AM: { value: "", error: false, rate: "" },
+                                        PM: { value: "", error: false, rate: "" },
+                                    })),
+                                }
+                                : entry
+                        )
+                    );
+                }
+
+                // Change PO
+                else if (oldPo && newPo.trim() && oldPo !== newPo) {
+                    // first delete all old‐PO entries
+                    const dels = [];
+                    laborData[rowIndex].cells.forEach((cell, vi) => {
+                        ["AM", "PM"].forEach(period => {
+                            const { value } = cell[period];
+                            if (!value) return;
+
+                            const dayAbbr = validDaysOfWeek[vi];
+                            const wd = dateMap[dayAbbr];
+                            if (!wd) return;
+
+                            dels.push(deleteBackendRecordHandler(oldPo, wd, period));
+                        });
+                    });
+                    await Promise.all(dels);
+
+                    // recreate under newPo
+                    const ups = [];
+                    laborData[rowIndex].cells.forEach((cell, vi) => {
+                        ["AM", "PM"].forEach(period => {
+                            const { value, rate } = cell[period];
+                            if (!value) return;
+
+                            const dayAbbr = validDaysOfWeek[vi];
+                            const wd = dateMap[dayAbbr];
+                            if (!wd) return;
+
+                            ups.push(
+                                updateBackendRecord(
+                                    { filters, weekRanges },
+                                    {
+                                        rowIndex,
+                                        dayIndex: vi,
+                                        timeOfDay: period,
+                                        poNumber: newPo,
+                                        value,
+                                        rate,
+                                    }
+                                )
+                            );
+                        });
+                    });
+                    await Promise.all(ups);
+
+                    // update local state
+                    setLaborData(prev =>
+                        prev.map((entry, idx) =>
+                            idx === rowIndex ? { ...entry, po_number: newPo } : entry
+                        )
+                    );
+                }
+
+                // revalidate
+                mutate();
+            } catch (err) {
+                console.error("PO change failed:", err);
+                setSnackbarMessage("Oops! Couldn’t update PO on the backend.");
+                setSnackbarOpen(true);
+            }
+        },
+        [laborData, weekRanges, filters, setLaborData, deleteBackendRecordHandler, updateBackendRecord, mutate]
+    );
+
+
+    const handleLaborChange = useCallback((rowIndex, dayIndex, timeOfDay, value) => {
+        const isError = value === "" ? false : !/^[+-]?(\d+(\.\d*)?|(\.\d+))$/.test(value);
+        updateLaborEntry(rowIndex, dayIndex, timeOfDay, value, isError);
+    },
+        [updateLaborEntry]
+    );
 
     const handleLaborBlur = async (
         rowIndex, dayIndex, timeOfDay, poNumber, poError

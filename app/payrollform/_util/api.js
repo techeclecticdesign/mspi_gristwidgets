@@ -47,6 +47,7 @@ export async function updateBackendRecord(
     throw new Error(`HTTP error during check! status: ${checkResponse.status}`);
   }
   const existingRecords = await checkResponse.json();
+
   if (existingRecords.length > 0) {
     const updatePayload = {
       po_number: payload.po_number,
@@ -57,11 +58,13 @@ export async function updateBackendRecord(
       timeclock_hours: payload.timeclock_hours,
       date_entered: payload.date_entered,
     };
+
     const updateResponse = await fetch("/api/payhours", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatePayload),
     });
+
     if (!updateResponse.ok) {
       throw new Error(`HTTP error during update! status: ${updateResponse.status}`);
     }
@@ -73,9 +76,11 @@ export async function updateBackendRecord(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+
     if (!addResponse.ok) {
       throw new Error(`HTTP error during add! status: ${addResponse.status}`);
     }
+
     const addData = await addResponse.json();
     console.log("Record successfully added:", addData);
   }

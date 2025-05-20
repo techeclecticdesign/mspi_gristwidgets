@@ -100,9 +100,13 @@ export default function LaborForWeekPO({
     const value = e.target.value;
     setPoNumber(value);
 
+    if (!value.trim()) {
+      setPoError(false);
+      return;
+    }
     // Validate PO number format (e.g., "1234-5678")
     const regex = /^\d{4}-\d{4}$/;
-    if (!value || !regex.test(value)) {
+    if (!regex.test(value)) {
       setPoError(true);
       return;
     }
@@ -119,10 +123,10 @@ export default function LaborForWeekPO({
     const value = e.target.value;
     const regex = /^\d{4}-\d{4}$/;
     if (!value) {
+      onPoChange(rowIndex, value);
       setPoError(false);
-      return;
     }
-    if (regex.test(value)) {
+    if (value && regex.test(value)) {
       const foundKey = Object.keys(production).includes(value);
       setPoError(!foundKey);
       const defaultWageCalculated = calcDefaultWage(value, mdoc, workers, production);
@@ -135,7 +139,7 @@ export default function LaborForWeekPO({
         });
       });
       onPoChange(rowIndex, value);
-    } else {
+    } else if (value) {
       setPoError(true);
     }
   };
@@ -144,7 +148,7 @@ export default function LaborForWeekPO({
     const payload = { po_number: poNumber, payable_on_nh_days: payableValue };
     try {
       const response = await fetch("/api/production", {
-        method: "PUT",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });

@@ -1,6 +1,3 @@
-import { getWeekRanges } from '/app/lib/util.js';
-export { getWeekRanges };
-
 const aggregateWorkHours = (records) => {
   const result = {};
   validDaysOfWeek.forEach((day) => {
