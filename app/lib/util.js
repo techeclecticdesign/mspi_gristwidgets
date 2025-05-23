@@ -58,3 +58,41 @@ export function calculateDeptWages(
 
   return deptTotals;
 }
+
+export function formatCurrency(amount) {
+  return `$${amount.toFixed(2)}`;
+}
+
+/* calculate a weighted average of values array and a paired set of weights */
+export function calcWeightedAverage(values, weights) {
+  if (values.length !== weights.length) {
+    throw new Error("Values and weights must be the same length.");
+  }
+
+  if (!Array.isArray(values) || !Array.isArray(weights)) {
+    throw new Error("Both values and weights must be arrays.");
+  }
+
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+  if (totalWeight === 0) return null;
+
+  const weightedSum = values.reduce((sum, val, i) => sum + val * weights[i], 0);
+  return weightedSum / totalWeight;
+}
+
+/* take payhours (probably after being filtered by params) and index entries by mdoc */
+export function getTotalHoursForMdoc(mdoc, payHours) {
+  return (payHours[mdoc] ?? []).reduce((sum, row) => sum + (row.laborsheet_hours || 0), 0);
+}
+
+/* group payhours into structure like ob[dept][mdoc], where dept is the department mdoc works in */
+export function groupPayHoursByDeptAndMdoc(payHours, workers) {
+  return Object.entries(payHours).reduce((acc, [mdoc, entries]) => {
+    const totalHours = getTotalHoursForMdoc(mdoc, payHours);
+    const hourly_rate = entries[0]?.hourly_rate ?? 0;
+    const dept = workers[mdoc]?.payroll_dept ?? "Unknown";
+    const deptGroup = acc[dept] ??= {};
+    deptGroup[mdoc] = { mdoc, totalHours, hourly_rate };
+    return acc;
+  }, {});
+}

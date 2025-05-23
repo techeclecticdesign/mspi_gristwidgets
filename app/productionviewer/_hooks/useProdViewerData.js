@@ -2,12 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import useSWR from "swr";
 import { fetchWithRetry } from "@/app/lib/api";
 
-const fetcher = (url) =>
-  fetchWithRetry(url, { method: "GET" })
-    .then(res => {
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      return res.json();
-    });
+const fetcher = (url) => fetchWithRetry(url, { method: "GET" });
 
 export default function useProdViewerData() {
   const [workers, setWorkers] = useState([]);
@@ -18,7 +13,6 @@ export default function useProdViewerData() {
     "/api/prodviewerdata",
     fetcher
   );
-
   useEffect(() => {
     if (data) {
       setWorkers(data.workers ?? []);

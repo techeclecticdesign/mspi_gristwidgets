@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { groupByField, filterAndIndexWorkersByMdoc, batchFetch } from "@/app/lib/api";
+import { groupByField, filterAndIndexWorkersByMdoc, batchFetch, indexByPkField } from "@/app/lib/api";
 import { getHttpErrorResponse } from "@/app/lib/errors";
 
 export async function GET(request) {
@@ -19,7 +19,7 @@ export async function GET(request) {
     const payHours = groupByField(payJson, "mdoc");
     const workers = filterAndIndexWorkersByMdoc(workersJson);
     const timeclock = timeclockJson;
-    const production = productionJson;
+    const production = indexByPkField(productionJson, "po_number");
     return NextResponse.json({ payHours, workers, timeclock, production });
   } catch (err) {
     return getHttpErrorResponse("GET /api/payrolldata", err);

@@ -6,34 +6,32 @@ import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
-import CircularProgress from "@mui/material/CircularProgress";
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import { useGrist } from "../grist";
 import useProdViewerData from "./_hooks/useProdViewerData";
+import { downloadPdfFromEndpoint } from "@/app/lib/pdf";
+
+const host = process.env.NEXT_PUBLIC_GRIST_HOST;
 
 export default function ProductionViewer() {
   const grist = useGrist();
   const gristRef = useRef(null);
   const tableDataRef = useRef([]);
+  const searchInputRef = useRef(null);
   const [options, setOptions] = useState([]);
   const [selectedRow, setSelectedRow] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchCursor, setSearchCursor] = useState(-1);
   const [previewCB, setPreviewCB] = useState(false);
-  const [eFileCB, setEFileCB] = useState(false);
-  const [printCB, setPrintCB] = useState(false);
-  const [clerkRB, setClerkRB] = useState(true);
-  const [contractorRB, setContractorRB] = useState(false);
+  const [costoutCB, setCostoutCB] = useState(false);
+  const [closeOutCB, setCloseOutCB] = useState(false);
   const [noteType, setNoteType] = useState("clerk");
   const [clerkNotes, setClerkNotes] = useState("");
   const [contractorNotes, setContractorNotes] = useState("");
 
   const {
-    error: dataError,
     isLoading: dataLoading,
-    workers,
-    payHours,
     prodStandards,
     refresh: refreshData
   } = useProdViewerData();
@@ -141,16 +139,52 @@ export default function ProductionViewer() {
   }
 
   const handleInventoryButton = () => {
-    return;
-  }
+    window.open(host + "/o/docs/qZ1weY6NyWVW/test/p/15", "_blank");
+  };
 
   const handleTemplatesButton = () => {
-    return;
+    window.open(host + "/o/docs/qZ1weY6NyWVW/test/p/14", "_blank");
+  };
+
+  const handleCloseOutButton = async () => {
+    if (!selectedRow) {
+      return;
+    }
+    // If 'Completed' is empty, update the Grist table via widget API
+    if (!selectedRow.cost_out_date) {
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+      await gristRef.current.selectedTable.update({
+        id: selectedRow.id,
+        fields: { cost_out_date: today }
+      });
+      refreshData();
+      setSelectedRow({ ...selectedRow, cost_out_date: today });
+    }
+    // print closeout
+    if (closeOutCB) {
+      await downloadPdfFromEndpoint(
+        `/api/pdf/product-closeout?ponumber=${selectedRow.po_number}`
+      );
+    }
+    // print costout
+    if (costoutCB) {
+      await downloadPdfFromEndpoint(
+        `/api/pdf/worker-costout?ponumber=${selectedRow.po_number}&productcode=${selectedRow.product_code}`
+      );
+      return;
+    }
   }
 
-  const handleCloseOutButton = () => {
-    return;
-  }
+  // clear a specific field on backspace or delete press
+  const handleClearField = async (field) => {
+    if (!selectedRow) { return; }
+    await gristRef.current.selectedTable.update({
+      id: selectedRow.id,
+      fields: { [field]: "" }
+    });
+    refreshData();
+    setSelectedRow({ ...selectedRow, [field]: "" });
+  };
 
   const commonSx = {
     "& .MuiInputBase-input": {
@@ -179,12 +213,7 @@ export default function ProductionViewer() {
 
   return (
     <>
-      {dataLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <CircularProgress size={50} style={{ color: "white" }} />
-        </div>
-      )}
-      <div className={`${dataLoading ? "opacity-20 pointer-events-none" : ""} ml-2 mt-2 grid grid-cols-4 gap-5`}>
+      <div className={"ml-2 mt-2 grid grid-cols-4 gap-5"}>
         {/* Col 1 */}
         <div className="flex flex-col space-y-1.5">
           <Autocomplete
@@ -269,11 +298,25 @@ export default function ProductionViewer() {
               size="small"
               variant="outlined"
               label="Search"
+              inputRef={input => {
+                searchInputRef.current = input;
+              }}
               value={searchTerm}
               autoComplete="off"
               onChange={e => {
                 setSearchTerm(e.target.value);
                 setSearchCursor(-1);
+              }}
+              slotProps={{
+                htmlInput: {
+                  onKeyDown: (e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      (e.target).blur();
+                      handleSearchFirst();
+                    }
+                  },
+                },
               }}
               sx={{
                 ...commonSx,
@@ -384,16 +427,17 @@ export default function ProductionViewer() {
               </Button>
             </div>
             <div className="w-1/2 flex flex-col mt-2.5">
+              <p className="text-xs font-bold ml-8 mt-[-14px] mb-[-2px]">Print</p>
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={printCB}
+                    checked={closeOutCB}
                     size="small"
-                    onChange={e => setPrintCB(e.target.checked)}
+                    onChange={e => setCloseOutCB(e.target.checked)}
                     sx={{ p: 0, pl: 0.5, pb: 0 }}
                   />
                 }
-                label="Print"
+                label="Close Out"
                 sx={{
                   '& .MuiFormControlLabel-label': {
                     fontSize: '0.75rem',
@@ -406,14 +450,14 @@ export default function ProductionViewer() {
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={eFileCB}
+                    checked={costoutCB}
                     size="small"
-                    onChange={e => setEFileCB(e.target.checked)}
+                    onChange={e => setCostoutCB(e.target.checked)}
                     disabled={previewCB}
                     sx={{ p: 0, pl: 0.5 }}
                   />
                 }
-                label="E-File"
+                label="Cost Out"
                 sx={{
                   '& .MuiFormControlLabel-label': {
                     fontSize: '0.75rem',
@@ -437,7 +481,7 @@ export default function ProductionViewer() {
               onChange={e => setPriceInput(e.target.value)}
               onBlur={async () => {
                 if (selectedRow && priceInput !== customerPrice) {
-                  await fetch("/api/updateprodstandard", {
+                  await fetch("/api/prodstandards", {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -482,6 +526,12 @@ export default function ProductionViewer() {
                 ...commonSx,
                 width: 100
               }}
+              onKeyDown={e => {
+                if (e.key === 'Backspace' || e.key === 'Delete') {
+                  e.preventDefault();
+                  handleClearField('finishing_done');
+                }
+              }}
             />
             <TextField
               size="small"
@@ -492,6 +542,12 @@ export default function ProductionViewer() {
                 ...commonSx,
                 width: 100
               }}
+              onKeyDown={e => {
+                if (e.key === 'Backspace' || e.key === 'Delete') {
+                  e.preventDefault();
+                  handleClearField('cost_out_date');
+                }
+              }}
             />
             <TextField
               size="small"
@@ -501,6 +557,12 @@ export default function ProductionViewer() {
               sx={{
                 ...commonSx,
                 width: 100
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Backspace' || e.key === 'Delete') {
+                  e.preventDefault();
+                  handleClearField('product_shipped');
+                }
               }}
             />
           </div>
@@ -544,7 +606,7 @@ export default function ProductionViewer() {
               onBlur={async () => {
                 if (!selectedRow) { return; }
                 if (noteType === "clerk" && clerkNotes !== clerkNotesData) {
-                  await fetch("/api/updateprodstandard", {
+                  await fetch("/api/prodstandards", {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
