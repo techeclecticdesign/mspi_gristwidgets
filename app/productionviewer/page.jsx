@@ -134,8 +134,12 @@ export default function ProductionViewer() {
     return;
   }
 
-  const handleShipButton = () => {
-    return;
+  const handleShipButton = async () => {
+    if (!selectedRow) {
+      return;
+    }
+    await downloadPdfFromEndpoint(
+      `/api/pdf/shipticket?ponumber=${selectedRow.po_number}`);
   }
 
   const handleInventoryButton = () => {
