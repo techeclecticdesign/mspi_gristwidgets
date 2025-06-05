@@ -8,6 +8,11 @@ import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
+import IconButton from "@mui/material/IconButton";
+import AddIcon from "@mui/icons-material/Add";
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import NewProduction from "@/app/components/NewProduction";
 import { useGrist } from "../grist";
 import useProdViewerData from "./_hooks/useProdViewerData";
 import { downloadPdfFromEndpoint } from "@/app/lib/pdf";
@@ -29,6 +34,7 @@ export default function ProductionViewer() {
   const [noteType, setNoteType] = useState("clerk");
   const [clerkNotes, setClerkNotes] = useState("");
   const [contractorNotes, setContractorNotes] = useState("");
+  const [poModalOpen, setPoModalOpen] = useState(false);
 
   const {
     isLoading: dataLoading,
@@ -47,7 +53,7 @@ export default function ProductionViewer() {
     : "";
 
   const contractorNotesData = selectedRow
-    ? (selectedRow.production_memo ?? "")
+    ? (selectedRow.contractor_memo ?? "")
     : "";
 
   useEffect(() => {
@@ -101,7 +107,7 @@ export default function ProductionViewer() {
     for (let i = startIdx; i < list.length; i++) {
       const r = list[i];
       if (
-        [r.po_number, r.product, r.product_code, r.team, r.customer_name]
+        [r.po_number, r.product, r.product_code, r.team, r.customer]
           .some(f => f?.toString().toLowerCase().includes(term))
       ) {
         return i;
@@ -179,7 +185,30 @@ export default function ProductionViewer() {
     }
   }
 
-  // clear a specific field on backspace or delete press
+  const handleAddPoButton = () => {
+    setPoModalOpen(true);
+  };
+
+  const handleModalCallback = async (newPo) => {
+    setPoModalOpen(false);
+    console.log("New PO arrived:", newPo);
+
+    const fullRow = tableDataRef.current.find(r => r.po_number === newPo);
+    if (!fullRow) return;
+
+    setOptions(opts => [...opts, {
+      id: fullRow.id,
+      po_number: fullRow.po_number,
+      product: fullRow.product || ""
+    }]);
+
+    setTimeout(() => handleChange(null, {
+      id: fullRow.id,
+      po_number: fullRow.po_number,
+      product: fullRow.product || ""
+    }), 200);
+  }
+
   const handleClearField = async (field) => {
     if (!selectedRow) { return; }
     await gristRef.current.selectedTable.update({
@@ -217,13 +246,40 @@ export default function ProductionViewer() {
 
   return (
     <>
-      <div className={"ml-2 mt-2 grid grid-cols-4 gap-5"}>
+      {/* Add New PO Modal */}
+      <Dialog
+        open={poModalOpen}
+        onClose={() => setPoModalOpen(false)}
+        fullScreen
+        sx={{
+          // container flush to top
+          "& .MuiDialog-container": {
+            alignItems: "flex-start",
+            paddingTop: 0,               // remove any container padding
+          },
+          // paper with no margins
+          "& .MuiDialog-paper": {
+            margin: 0,
+            marginTop: -3,
+            width: "75%",
+            maxWidth: "75%",
+            height: "125%",
+            borderRadius: 0,
+          },
+        }}
+      >
+        <DialogContent>
+          <NewProduction modalCallback={handleModalCallback} />
+        </DialogContent>
+      </Dialog>
+
+      <div className={"ml-2 mt-2 grid grid-cols-[1.3fr_1fr_1fr_1fr] gap-4"}>
         {/* Col 1 */}
         <div className="flex flex-col space-y-1.5">
           <Autocomplete
             size="small"
             options={options}
-            getOptionLabel={opt => opt.po_number}
+            getOptionLabel={opt => opt?.po_number ?? ""}
             renderOption={(props, opt) => {
               const { key, ...rest } = props;
               return (
@@ -232,21 +288,33 @@ export default function ProductionViewer() {
                 </li>
               );
             }}
-            value={selectedRow && { id: selectedRow.id, po_number: selectedRow.po_number, product: selectedRow.product }}
-            onChange={handleChange}
+            value={
+              selectedRow
+                ? { id: selectedRow.id, po_number: selectedRow.po_number ?? "", product: selectedRow.product ?? "" }
+                : null
+            } onChange={handleChange}
             renderInput={params => (
-              <TextField
-                {...params}
-                label="PO Number"
-                variant="outlined"
-                sx={{
-                  ...commonSx,
-                  "& .MuiInputBase-input": {
-                    ...commonSx["& .MuiInputBase-input"],
-                    height: 15,
-                  },
-                }}
-              />
+              <div className="flex items-center gap-1">
+                <TextField
+                  {...params}
+                  label="PO Number"
+                  variant="outlined"
+                  sx={{
+                    ...commonSx,
+                    "& .MuiInputBase-input": {
+                      ...commonSx["& .MuiInputBase-input"],
+                      height: 15,
+                    },
+                  }}
+                />
+                <IconButton
+                  size="small"
+                  onClick={handleAddPoButton}
+                  sx={{ height: 30, width: 30 }}
+                >
+                  <AddIcon fontSize="small" />
+                </IconButton>
+              </div>
             )}
             sx={{ display: "block", width: "100%" }}
           />
@@ -275,7 +343,7 @@ export default function ProductionViewer() {
             size="small"
             variant="outlined"
             label="For&nbsp;&nbsp;"
-            value={selectedRow?.customer_name ?? ""}
+            value={selectedRow?.customer ?? ""}
             sx={commonSx}
           />
           <div className="flex gap-1.5">
@@ -622,7 +690,7 @@ export default function ProductionViewer() {
                 }
                 else if (noteType === "contractor" && contractorNotes !== contractorNotesData) {
                   await gristRef.current.updateRecords({
-                    [selectedRow.id]: { production_memo: contractorNotes }
+                    [selectedRow.id]: { contractor_memo: contractorNotes }
                   });
                 }
               }}

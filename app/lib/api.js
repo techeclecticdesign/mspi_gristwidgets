@@ -137,3 +137,11 @@ export function filterActiveWorkers(records) {
 export function filterAndIndexWorkersByMdoc(records) {
   return indexByPkField(filterActiveWorkers(records), "mdoc");
 }
+
+// filter out all but the Team Leaders
+export function filterWorkersAsTeamLeaders(records) {
+  return filterActiveWorkers(records)
+    .filter(rec =>
+      rec.name === rec.team || rec.team === 'Upholstery'
+    );
+}

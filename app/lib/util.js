@@ -96,3 +96,31 @@ export function groupPayHoursByDeptAndMdoc(payHours, workers) {
     return acc;
   }, {});
 }
+
+// Filters an array of strings by regex
+export function filterArrayByRegex(arr, regex) {
+  return arr.filter(item => regex.test(item));
+}
+
+function escapeRegExp(str) {
+  // escape regex metacharacters
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Filters an array of strings that start with given prefix
+export function filterArrayStartsWith(arr, prefix) {
+  const pattern = new RegExp('^' + escapeRegExp(prefix));
+  return filterArrayByRegex(arr, pattern);
+}
+
+// Filters an array of strings that end with given suffix
+export function filterArrayEndsWith(arr, suffix) {
+  const pattern = new RegExp(escapeRegExp(suffix) + '$');
+  return filterArrayByRegex(arr, pattern);
+}
+
+// Filters an array of strings that contain given substring
+export function filterArrayContains(arr, substr) {
+  const pattern = new RegExp(escapeRegExp(substr));
+  return filterArrayByRegex(arr, pattern);
+}

@@ -41,8 +41,6 @@
 
 ## Production
 
-- `nhifm`
-- `payable_on_nh_days`
 - `po_number`
 - `product_code`
 - `amount_requested`
@@ -55,17 +53,14 @@
 - `cut_date`
 - `cost_out_date`
 - `product`
-- `production_memo`
-- `for`
-- `customer_name`
-- `customer_address`
+- `contractor_memo`
+- `customer`
 - `user_name`
-- `entry_date`
-- `invoice_number`
-- `autoassign_invoice_number`
 - `pie`
 - `finishing_done`
 - `upholstery`
+- `nhifm`
+- `payable_on_nh_days`
 
 ---
 
@@ -144,3 +139,4 @@
 - `curr_month_hours`
 - `prev_week_hours`
 - `nhifm_worker`
+- `nhifm_id`

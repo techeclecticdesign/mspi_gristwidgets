@@ -84,7 +84,6 @@ export async function GET(req) {
       workersByMdoc,
       inventoryByStockNo
     );
-
     const pdfProps = {
       ...costoutData,
       team: original.productionRow.team,

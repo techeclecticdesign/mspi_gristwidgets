@@ -59,3 +59,44 @@ export async function getGristSqlRecordId(tableId, opts = {}) {
   }
   return recs[0].id;
 }
+
+/* gets first record after sorting a field in a given order.  sortOrder must be "ASC" or "DESC". */
+export async function getGristSqlSingleRecord(tableId, fieldName, sortOrder = "ASC") {
+  const upperOrder = sortOrder.toUpperCase();
+  if (upperOrder !== "ASC" && upperOrder !== "DESC") {
+    throw new Error("Invalid sort order, gotta be ASC or DESC");
+  }
+  const q = `SELECT * FROM ${tableId} ORDER BY ${fieldName} ${upperOrder} LIMIT 1`;
+  const url = `${env.host}/api/docs/${env.docId}/sql?q=${encodeURIComponent(q)}`;
+  const data = await fetchWithRetry(
+    url,
+    { headers: { Authorization: `Bearer ${env.apiKey}` } }
+  );
+  const raw = data.records || [];
+  if (!raw.length) {
+    throw new Error("Record not found");
+  }
+  return raw[0].fields;
+}
+
+export async function getGristSqlPrefixMatches(tableId, fieldName, prefix) {
+  if (typeof prefix !== "string" || !prefix.length) {
+    throw new Error("Prefix must be a non-empty string");
+  }
+  const isValidIdentifier = name => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name);
+  if (!isValidIdentifier(tableId)) {
+    throw new Error("Invalid table identifier");
+  }
+  if (!isValidIdentifier(fieldName)) {
+    throw new Error("Invalid field identifier");
+  }
+  const escapedPrefix = prefix.replace(/'/g, "''");
+  const q = `SELECT * FROM ${tableId} WHERE ${fieldName} LIKE '${escapedPrefix}%'`;
+  const url = `${env.host}/api/docs/${env.docId}/sql?q=${encodeURIComponent(q)}`;
+  const data = await fetchWithRetry(
+    url,
+    { headers: { Authorization: `Bearer ${env.apiKey}` } }
+  );
+  const raw = data.records || [];
+  return raw.map(rec => rec.fields);
+}
