@@ -10,6 +10,7 @@ import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import IconButton from "@mui/material/IconButton";
 import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import NewProduction from "@/app/components/NewProduction";
@@ -35,6 +36,7 @@ export default function ProductionViewer() {
   const [clerkNotes, setClerkNotes] = useState("");
   const [contractorNotes, setContractorNotes] = useState("");
   const [poModalOpen, setPoModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const {
     isLoading: dataLoading,
@@ -219,6 +221,19 @@ export default function ProductionViewer() {
     setSelectedRow({ ...selectedRow, [field]: "" });
   };
 
+  const handleDeletePoButton = () => {
+    if (selectedRow) setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDeletePo = async () => {
+    setDeleteDialogOpen(false);
+    await fetch(`/api/cascadedelete?po_number=${selectedRow.po_number}`, { method: "DELETE" });
+    refreshData();
+    setSelectedRow(null);
+  };
+
+  const handleCancelDeletePo = () => setDeleteDialogOpen(false);
+
   const commonSx = {
     "& .MuiInputBase-input": {
       fontSize: 11,
@@ -268,10 +283,19 @@ export default function ProductionViewer() {
           },
         }}
       >
+        {/* Add PO Modal Form */}
         <DialogContent>
           <NewProduction modalCallback={handleModalCallback} />
         </DialogContent>
       </Dialog>
+      {/* Delete PO Modal Confirm */}
+      <Dialog open={deleteDialogOpen} onClose={handleCancelDeletePo}>
+        <DialogContent>
+          <p>This will delete this PO Number and all related data.<br />Are you sure you want to continue?</p>
+          <Button onClick={handleConfirmDeletePo}>Yes</Button>
+          <Button onClick={handleCancelDeletePo}>No</Button>
+        </DialogContent>
+      </Dialog >
 
       <div className={"ml-2 mt-2 grid grid-cols-[1.3fr_1fr_1fr_1fr] gap-4"}>
         {/* Col 1 */}
@@ -313,6 +337,9 @@ export default function ProductionViewer() {
                   sx={{ height: 30, width: 30 }}
                 >
                   <AddIcon fontSize="small" />
+                </IconButton>
+                <IconButton size="small" onClick={handleDeletePoButton} sx={{ height: 30, width: 30 }}>
+                  <RemoveIcon fontSize="small" />
                 </IconButton>
               </div>
             )}
