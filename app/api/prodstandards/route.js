@@ -17,6 +17,46 @@ export async function GET(req) {
   }
 }
 
+export async function POST(request) {
+  try {
+    const tableId = "ProductionStandards";
+    const {
+      product_code,
+      description,
+      default_amount,
+      price,
+      notes
+    } = await request.json();
+
+    if (!product_code) {
+      throw new HTTPError("The product_code field is required.", 400);
+    }
+
+    const payload = {
+      records: [{
+        fields: {
+          product_code,
+          description,
+          default_amount,
+          customer_price: price,
+          production_notes: notes
+        }
+      }]
+    };
+
+    const createResponse = await sendGristTableRequest({
+      tableId,
+      method: "POST",
+      payload
+    });
+
+    revalidateTag('prodstandards');
+    return NextResponse.json(createResponse, { status: 201 });
+  } catch (err) {
+    return getHttpErrorResponse("POST /api/prodstandards", err);
+  }
+}
+
 export async function PATCH(request) {
   try {
     const tableId = "ProductionStandards";

@@ -84,12 +84,10 @@
 
 - `product_code`
 - `date_updated`
-- `default_contractor`
 - `default_amount`
 - `notes`
 - `production_notes`
 - `customer_price`
-- `invoice_number`
 - `user_name`
 - `entry_date`
 
