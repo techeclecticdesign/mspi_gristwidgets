@@ -19,6 +19,7 @@ import useProdViewerData from "./_hooks/useProdViewerData";
 import { downloadPdfFromEndpoint } from "@/app/lib/pdf";
 
 const host = process.env.NEXT_PUBLIC_GRIST_HOST;
+const inventory_page = process.env.NEXT_PUBLIC_INVENTORY_TABLE_PAGE;
 
 export default function ProductionViewer() {
   const grist = useGrist();
@@ -151,7 +152,7 @@ export default function ProductionViewer() {
   }
 
   const handleInventoryButton = () => {
-    window.open(host + "/o/docs/qZ1weY6NyWVW/test/p/15", "_blank");
+    window.open(host + "/o/docs/qZ1weY6NyWVW/test/p/" + inventory_page, "_blank");
   };
 
   const handleTemplatesButton = () => {
