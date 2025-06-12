@@ -41,7 +41,7 @@ export async function GET(request) {
       .sort((a, b) => a.code.localeCompare(b.code)).reverse();
 
     const prodStandards = indexByPkField(prodStandRaw, "product_code");
-    const templates = indexByPkField(templatesRaw, "product_code");
+    const templates = groupByField(templatesRaw, "product_code");
     const filteredRawWorkers = filterActiveWorkers(workers);
     const workersByName = indexByPkField(filteredRawWorkers, "name");
     const filteredLeaders = filterWorkersAsTeamLeaders(filteredRawWorkers);

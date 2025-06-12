@@ -5,9 +5,11 @@ import { getHttpErrorResponse } from "@/app/lib/errors";
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
-    const stocknumber = searchParams.get("stocknumber") ?? undefined;
+
+    //only getting one response when i should be getting many
+    const productcode = searchParams.get("productcode") ?? undefined;
     const filters = {};
-    if (stocknumber) filters.stocknumber_lookup = stocknumber;
+    if (productcode) filters.product_code = productcode;
     const records = await getGristSqlRecords("Templates", { filters });
     if (searchParams.toString() === "") {
       return NextResponse.json(records, {

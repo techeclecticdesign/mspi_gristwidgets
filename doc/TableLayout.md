@@ -105,6 +105,7 @@
 - `round_precision`
 - `user_name`
 - `entry_date`
+- `material_dept`
 
 ---
 

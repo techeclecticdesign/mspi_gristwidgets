@@ -124,3 +124,13 @@ export function filterArrayContains(arr, substr) {
   const pattern = new RegExp(escapeRegExp(substr));
   return filterArrayByRegex(arr, pattern);
 }
+
+// parses templates table (indexed by product code) and returns list of wood materials
+export function getTemplateWoodEntries(templates, productCode) {
+  const entries = templates || [];
+  return entries.filter(item => {
+    const isWWStock = String(item.stock_number).slice(0, 2).toUpperCase() === 'WW';
+    const isWoodshopDept = String(item.material_dept || '').toUpperCase() === 'WOODSHOP';
+    return isWWStock && isWoodshopDept;
+  });
+}

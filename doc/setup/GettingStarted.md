@@ -58,7 +58,8 @@ Using the `TableLayout.md` document (found in `/docs`), follow these steps:
   - Data is **not outdated**
   - You’re removing **unused/irrelevant fields**
 
-> ⚠️ Note: The source data is **messy and noisy**, so be thorough.
+> ⚠️ Note: The source data is **messy and noisy**, so be thorough.  You will likely need to build
+> queries in order to have the fields you need for each table.
 
 ### 3. Import into Grist
 

@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogActions from "@mui/material/DialogActions";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import Snackbar from "@mui/material/Snackbar";
@@ -12,7 +15,8 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import useNewProductionData from "@/app/hooks/useNewProductionData";
-import { filterArrayStartsWith } from "@/app/lib/util";
+import { filterArrayStartsWith, getTemplateWoodEntries } from "@/app/lib/util";
+import { downloadPdfFromEndpoint } from "@/app/lib/pdf";
 
 export default function ProductionPage({ modalCallback }) {
   const {
@@ -27,6 +31,7 @@ export default function ProductionPage({ modalCallback }) {
   } = useNewProductionData();
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
+  const [printSlipOpen, setPrintSlipOpen] = useState(false);
   const [productType, setProductType] = useState("");
   const [selectedProd, setSelectedProd] = useState(null); // options for stock product code list
   const [productCode, setProductCode] = useState(""); // dynamically generated product code
@@ -44,6 +49,8 @@ export default function ProductionPage({ modalCallback }) {
   const [contractorNote, setContractorNote] = useState("");
   const [clerkNotes, setClerkNotes] = useState("");
   const [paidNHDays, setPaidNHDays] = useState(false);
+  const generatedPoRef = useRef(null);
+  const woodEntriesRef = useRef([]);
   const woodTypeOptions = [
     "Ash", "Birch", "Cedar", "Cherry", "Mahogany", "Oak", "Pine", "Poplar", "Other"
   ];
@@ -164,12 +171,23 @@ export default function ProductionPage({ modalCallback }) {
   const handleProdCodeChange = (value) => {
     setSelectedProd(value);
     setProductCode(value?.code ?? "");
+    if (value?.code) {
+      const found = descOptions.find(opt => opt.code === value.code);
+      if (found) {
+        setProductDesc(found.desc);
+      }
+    }
     if (productType === "Stock") {
       setCustomer(productType ?? "");
       if (!prodStandards[productCode]) return;
       setAmountRequested(prodStandards[productCode].default_amount ?? "");
       setPrice(prodStandards[productCode].customer_price ?? "");
       setClerkNotes(prodStandards[productCode].production_notes) || "";
+      setClerkNotes(prodStandards[productCode].production_notes) || "";
+      const matchedDesc = descOptions.find(opt => opt.code === value.code);
+      if (matchedDesc) {
+        setProductDesc(matchedDesc.desc);
+      }
       // TODO setWoodType
     } else {
       // TODO customer -> autocomplete with customer list
@@ -206,6 +224,7 @@ export default function ProductionPage({ modalCallback }) {
   const handleTeamChange = (value) => {
     setTeam(value);
   }
+
   useEffect(() => {
     if (["NHIFM", "Weatherend", "Special"].includes(productType)) {
       if ("NHIFM" && !team) return;
@@ -289,7 +308,28 @@ export default function ProductionPage({ modalCallback }) {
     return true;
   }
 
+  const resetForm = () => {
+    setProductType("");
+    setSelectedProd(null);
+    setProductCode("");
+    setProdCodeEnabled(true);
+    setTeam("");
+    setProductDesc("");
+    setProdDescEnabled(true);
+    setAmountRequested("");
+    setRequestedEnabled(true);
+    setPrice("");
+    setWoodType("");
+    setWoodEnabled(true);
+    setCustomer("");
+    setCustomerDesc("");
+    setContractorNote("");
+    setClerkNotes("");
+    setPaidNHDays(false);
+  };
+
   const submitTables = async () => {
+    console.log(productDesc);
     const payload = {
       productType,
       workersByName,
@@ -316,15 +356,42 @@ export default function ProductionPage({ modalCallback }) {
       const newPo = resData.po_number;
       // send newRow back so parent can close modal & select that row
       if (modalCallback) modalCallback(newPo);
+      return newPo;
     } catch (error) {
       console.error("Submit failed", error);
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    // TODO - after successful submission, clear all fields.
     if (!validateForm()) return;
-    submitTables();
+    const newPo = await submitTables();
+    const woodEntries = getTemplateWoodEntries(templates[productCode], productCode);
+    if (!newPo) return;
+    if (woodEntries.length > 0) {
+      generatedPoRef.current = newPo;
+      setPrintSlipOpen(true);
+    }
+    if (!newPo) return;
+    if (woodEntries.length > 0) {
+      generatedPoRef.current = newPo;
+      woodEntriesRef.current = woodEntries;
+      setPrintSlipOpen(true);
+    }
   }
+
+  const handlePrintSlipYes = async () => {
+    await downloadPdfFromEndpoint(
+      `/api/pdf/woodslip?ponumber=${generatedPoRef.current}&productcode=${productCode}`
+    );
+    setPrintSlipOpen(false);
+    resetForm();
+  };
+
+  const handlePrintSlipNo = () => {
+    setPrintSlipOpen(false);
+    resetForm();
+  };
 
   return (
     <div className="relative p-2 grid grid-cols-2 gap-2">
@@ -587,6 +654,16 @@ export default function ProductionPage({ modalCallback }) {
           {toastMsg}
         </Alert>
       </Snackbar>
+      <Dialog
+        open={printSlipOpen}
+        onClose={handlePrintSlipNo}
+      >
+        <DialogTitle>Print Wood Slip?</DialogTitle>
+        <DialogActions>
+          <Button onClick={handlePrintSlipNo}>No</Button>
+          <Button onClick={handlePrintSlipYes}>Yes</Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }

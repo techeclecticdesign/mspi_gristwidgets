@@ -6,10 +6,8 @@ import { indexByPkField } from "@/app/lib/api";
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
-    const stocknumber = searchParams.get("stocknumber") ?? undefined;
     const hasIndexFlag = searchParams.has("indexByPk");
     const filters = {};
-    if (stocknumber) filters.stocknumber_lookup = stocknumber;
     const data = await getGristSqlRecords("Inventory", { filters });
     let records = data;
     if (hasIndexFlag) {
