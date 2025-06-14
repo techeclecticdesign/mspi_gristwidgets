@@ -9,6 +9,7 @@ export async function GET(req) {
   const ponumber = searchParams.get("ponumber");
   const productcode = searchParams.get("productcode");
   const origin = new URL(req.url).origin;
+
   try {
     const productionJson = await fetchWithRetry(
       `${origin}/api/production?ponumber=${ponumber}`
@@ -21,8 +22,6 @@ export async function GET(req) {
     const filteredTemplates = getTemplateWoodEntries(templates, productcode);
     const date = new Date(productionRow.start_date * 1000).toLocaleDateString();
 
-    //TODO I need to make the date a string in expected format.
-
     const pdfStream = await renderToStream(
       <WoodRequisition
         po_number={ponumber}
@@ -34,7 +33,6 @@ export async function GET(req) {
         templates={filteredTemplates}
       />
     );
-
 
     return new Response(pdfStream, {
       headers: {

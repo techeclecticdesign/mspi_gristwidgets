@@ -1,87 +1,123 @@
+import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
 
 Font.register({ family: 'Helvetica' })
 
 const styles = StyleSheet.create({
   page: {
-    padding: 24,
+    padding: 16,
     fontFamily: 'Helvetica',
-    fontSize: 14,
+    fontSize: 13,
+    flexDirection: 'column',
   },
-  centeredTitle: {
+  blankLine: {
+    width: 100,
+    height: 12,
+    marginLeft: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#000',
+    borderStyle: 'solid',
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 6,
+    marginTop: 8
+  },
+  subtitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 3,
+    textAlign: 'center'
   },
-  centeredSubtitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 50,
+  fieldGroup: {
+    flex: 1,
+    flexDirection: 'row'
   },
   fieldRow: {
     flexDirection: 'row',
-    marginBottom: 12,
-    marginHorizontal: 'auto',
+    marginBottom: 8,
+    marginLeft: 50,
   },
   fieldLabel: {
-    width: '12%',
     fontWeight: 'bold',
-    marginLeft: '2%'
+    marginRight: 12,
   },
-  fieldValue: {
-    width: '30%',
-  },
-  notesLabel: {
-    fontSize: 12,
-    marginTop: 30,
-    marginLeft: '8%'
-  },
-  notesBox: {
-    display: 'table',
-    width: '85%',
-    height: '40%',
-    borderWidth: 1,
-    borderColor: '#000',
+  amountField: {
+    width: 80,
+    borderBottomWidth: 1,
+    borderBottomColor: '#000',
     borderStyle: 'solid',
-    marginHorizontal: 'auto',
-    backgroundColor: '#E5E4E2'
+    paddingBottom: 2,
+    textAlign: 'center'
   },
+  amountRow: {
+    flexDirection: 'row',
+    marginLeft: 20,
+    marginTop: 30,
+    marginBottom: 20
+  }
 })
 
 export const ShipTicket = ({
-  ponumber,
+  po_number,
   team,
-  desc,
-  amount
-}) => (
-  <Document>
-    <Page size={[595.28, 420.945]} style={styles.page}>
-      {/* Header */}
-      <View>
-        <Text style={styles.centeredTitle}>MSP Industries</Text>
-        <Text style={styles.centeredSubtitle}>Shipping Ticket</Text>
-      </View>
+  product_code,
+  amount_requested,
+  amount_completed,
+  product,
+  customer,
+  date_completed
+}) => {
+  return (
+    <Document>
+      <Page size={[595.28, 420.945]} style={styles.page}>
+        <View style={styles.half}>
 
-      {/* PO Field */}
-      <View style={styles.fieldRow}>
-        <Text style={styles.fieldLabel}>PO #:</Text>
-        <Text style={styles.fieldValue}>{ponumber}</Text>
-        <Text style={styles.fieldLabel}>Amount:</Text>
-        <Text style={styles.fieldValue}>{amount}</Text>
-      </View>
-      <View style={styles.fieldRow}>
-        <Text style={styles.fieldLabel}>Product:</Text>
-        <Text style={styles.fieldValue}>{desc}</Text>
-        <Text style={styles.fieldLabel}>Team:</Text>
-        <Text style={styles.fieldValue}>{team}</Text>
+          {/* Title */}
+          <Text style={styles.title}>Maine State Prison Industries Shipping Ticket</Text>
+          <Text style={[styles.subtitle, { marginBottom: 40 }]}>{product}</Text>
 
-      </View>
+          {/* Row 1 */}
+          <View style={styles.fieldRow}>
+            <View style={[styles.fieldGroup, { flex: 1 }]}>
+              <Text style={styles.fieldLabel}>PO Number:</Text>
+              <Text>{po_number}</Text>
+            </View>
+            <View style={[styles.fieldGroup, { flex: 1 }]}>
+              <Text style={styles.fieldLabel}>Closed Date:</Text>
+              <Text>{date_completed}</Text>
+            </View>
+          </View>
 
-      {/* Notes box */}
-      <Text style={styles.notesLabel}>Notes:</Text>
-      <View style={styles.notesBox} />
-    </Page>
-  </Document >
-)
+          {/* Row 2 */}
+          <View style={styles.fieldRow}>
+            <View style={[styles.fieldGroup, { flex: 1 }]}>
+              <Text style={styles.fieldLabel}>Product Code #:</Text>
+              <Text>{product_code}</Text>
+            </View>
+            <View style={[styles.fieldGroup, { flex: 1 }]}>
+              <Text style={styles.fieldLabel}>Team:</Text>
+              <Text>{team}</Text>
+            </View>
+          </View>
+
+          {/* Row 3 */}
+          <View style={styles.amountRow}>
+            <View style={[styles.fieldGroup, { flex: 1, fontSize: 15 }]}>
+              <Text style={styles.fieldLabel}>Amount Requested:</Text>
+              <Text style={styles.amountField}>{amount_requested}</Text>
+            </View>
+            <View style={[styles.fieldGroup, { flex: 1, fontSize: 15 }]}>
+              <Text style={styles.fieldLabel}>Amount Completed:</Text>
+              <Text style={styles.amountField}>{amount_completed}</Text>
+            </View>
+          </View>
+
+          {/* Comments */}
+          <Text style={[styles.title, { marginTop: 30, marginBottom: 10 }]}>COMMENTS</Text>
+          <View style={{ border: '1 solid #000', minHeight: 100, marginBottom: 12 }} />
+        </View>
+      </Page >
+    </Document >
+  )
+}

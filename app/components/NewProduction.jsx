@@ -328,8 +328,14 @@ export default function ProductionPage({ modalCallback }) {
     setPaidNHDays(false);
   };
 
+  const finishSubmit = async () => {
+    await downloadPdfFromEndpoint(
+      `/api/pdf/completionslips?ponumber=${generatedPoRef.current}`
+    );
+    resetForm();
+  }
+
   const submitTables = async () => {
-    console.log(productDesc);
     const payload = {
       productType,
       workersByName,
@@ -371,12 +377,8 @@ export default function ProductionPage({ modalCallback }) {
     if (woodEntries.length > 0) {
       generatedPoRef.current = newPo;
       setPrintSlipOpen(true);
-    }
-    if (!newPo) return;
-    if (woodEntries.length > 0) {
-      generatedPoRef.current = newPo;
-      woodEntriesRef.current = woodEntries;
-      setPrintSlipOpen(true);
+    } else {
+      finishSubmit();
     }
   }
 
@@ -384,13 +386,13 @@ export default function ProductionPage({ modalCallback }) {
     await downloadPdfFromEndpoint(
       `/api/pdf/woodslip?ponumber=${generatedPoRef.current}&productcode=${productCode}`
     );
+    finishSubmit();
     setPrintSlipOpen(false);
-    resetForm();
   };
 
   const handlePrintSlipNo = () => {
+    finishSubmit();
     setPrintSlipOpen(false);
-    resetForm();
   };
 
   return (

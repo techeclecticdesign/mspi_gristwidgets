@@ -1,8 +1,6 @@
-// File: WoodReq.js
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
 
-// register Helvetica exactly like your example
 Font.register({ family: 'Helvetica' })
 
 const styles = StyleSheet.create({

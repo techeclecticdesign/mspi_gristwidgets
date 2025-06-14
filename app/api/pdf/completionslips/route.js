@@ -1,4 +1,4 @@
-import { ShipTicket } from "@/app/pdf/shipTicket";
+import { CompletionSlips } from "@/app/pdf/completionSlips";
 import { renderToStream } from "@react-pdf/renderer";
 import { getHttpErrorResponse } from "@/app/lib/errors";
 import { fetchWithRetry } from "@/app/lib/api";
@@ -14,28 +14,28 @@ export async function GET(req) {
     );
 
     const [productionRow] = productionJson;
+    const date = new Date(productionRow.start_date * 1000).toLocaleDateString();
 
     const pdfStream = await renderToStream(
-      <ShipTicket
+      <CompletionSlips
         po_number={ponumber}
         product_code={productionRow.product_code}
         team={productionRow.team}
         amount_requested={productionRow.amount_requested}
-        amount_completed={productionRow.amount_completed}
         customer={productionRow.customer}
         product={productionRow.product}
-        date_completed={productionRow.date_completed}
+        start_date={date}
       />
     );
 
     return new Response(pdfStream, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${ponumber}-shipticket.pdf"`,
+        "Content-Disposition": `attachment; filename="${ponumber}-wood-requisition.pdf"`,
       },
     });
 
   } catch (error) {
-    return getHttpErrorResponse("GET /api/pdf/shipticket", error);
+    return getHttpErrorResponse("GET /api/pdf/wood-requisition", error);
   }
 }
