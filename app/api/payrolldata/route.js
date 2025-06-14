@@ -9,18 +9,21 @@ export async function GET(request) {
       payJson,
       workersJson,
       timeclockJson,
-      productionJson
+      productionJson,
+      settings
     ] = await batchFetch(
       `${origin}/api/payhours`,
       `${origin}/api/workers`,
       `${origin}/api/timeclock`,
-      `${origin}/api/production`
+      `${origin}/api/production`,
+      `${origin}/api/settings`,
     );
     const payHours = groupByField(payJson, "mdoc");
     const workers = filterAndIndexWorkersByMdoc(workersJson);
     const timeclock = timeclockJson;
     const production = indexByPkField(productionJson, "po_number");
-    return NextResponse.json({ payHours, workers, timeclock, production });
+
+    return NextResponse.json({ payHours, workers, timeclock, production, settings });
   } catch (err) {
     return getHttpErrorResponse("GET /api/payrolldata", err);
   }

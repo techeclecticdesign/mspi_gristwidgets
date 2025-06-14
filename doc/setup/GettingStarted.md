@@ -75,6 +75,12 @@ Using the `TableLayout.md` document (found in `/docs`), follow these steps:
 original data that you imported.  You will need to create a new column, based on its name in the 
 `TableLayout.md` document, and fill in the expected values.
 
+### 5. Create a settings table
+
+- Inside of Grist create a new table named Settings.  Give it two columns, one called
+new_worker_wage the other called pie_wage.  Fill in the first row with the current values for
+those wages.
+
 ## Creating Custom Widgets
 
 A custom widget needs to be defined for each of the main pages that are a part of the MSPI Custom

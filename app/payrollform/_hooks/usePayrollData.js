@@ -12,6 +12,7 @@ export default function usePayrollData() {
   const [workers, setWorkers] = useState({});
   const [timeclock, setTimeclock] = useState([]);
   const [production, setProduction] = useState({});
+  const [settings, setSettings] = useState({});
 
   const { data, error, mutate } = useSWR("/api/payrolldata", fetcher);
 
@@ -21,6 +22,7 @@ export default function usePayrollData() {
       setWorkers(data.workers);
       setTimeclock(data.timeclock);
       setProduction(data.production);
+      setSettings(data.settings);
     }
   }, [data]);
 
@@ -31,6 +33,7 @@ export default function usePayrollData() {
     payHours,
     setPayHours,
     workers,
+    settings,
     timeclock,
     production,
     mutate,

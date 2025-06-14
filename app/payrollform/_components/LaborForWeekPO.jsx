@@ -17,9 +17,10 @@ export default function LaborForWeekPO({
   laborEntry,
   mdoc,
   workers,
+  settings,
   setSnackbarOpen,
   setSnackbarMessage,
-  filters
+  filters,
 }) {
 
   const { po_number, cells } = laborEntry;
@@ -129,7 +130,7 @@ export default function LaborForWeekPO({
     if (value && regex.test(value)) {
       const foundKey = Object.keys(production).includes(value);
       setPoError(!foundKey);
-      const defaultWageCalculated = calcDefaultWage(value, mdoc, workers, production);
+      const defaultWageCalculated = calcDefaultWage(value, mdoc, workers, production, settings);
       setDefaultWage(defaultWageCalculated);
       // Set hourly rates for each day according to the NHIFM policy
       validDaysOfWeek.forEach((day, dayIndex) => {

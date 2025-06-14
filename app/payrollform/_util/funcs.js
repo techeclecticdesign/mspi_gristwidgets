@@ -106,10 +106,10 @@ export function getLocalMidnightTs(date) {
   return Math.floor(d.getTime() / 1000);
 }
 
-export const calcDefaultWage = (poNumber, mdoc, workers, production) => {
+export const calcDefaultWage = (poNumber, mdoc, workers, production, settings) => {
   const foundKey = Object.keys(production).find((key) => key === poNumber);
   if (production[foundKey].pie) {
-    return process.env.NEXT_PUBLIC_PIE_WAGE;
+    return settings.pie_wage;
   }
   if (production[foundKey].nhifm) {
     return 0;

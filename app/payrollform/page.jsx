@@ -24,7 +24,7 @@ import useLaborData from "./_hooks/useLaborData";
 
 export default function PayrollForm() {
     const weekRanges = useMemo(() => getWeekRanges(), []);
-    const { payHours, setPayHours, workers, timeclock, production, mutate } = usePayrollData();
+    const { payHours, setPayHours, workers, timeclock, production, settings, mutate } = usePayrollData();
     const [filters, setFilters] = useState({ name: "", mdoc: "", dateRange: null });
     const { laborData, setLaborData, loadLaborData, aggregatedWorkHours } =
         useLaborData(payHours, weekRanges, filters, timeclock);
@@ -488,6 +488,7 @@ export default function PayrollForm() {
                             production={production}
                             mdoc={filters.mdoc}
                             workers={workers}
+                            settings={settings}
                             onPoChange={handlePoChange}
                             onChange={handleLaborChange}
                             onBlur={handleLaborBlur}
