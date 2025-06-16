@@ -135,7 +135,5 @@
 - `cartbox_number`
 - `outcount`
 - `offsite`
-- `curr_month_hours`
-- `prev_week_hours`
 - `nhifm_worker`
 - `nhifm_id`

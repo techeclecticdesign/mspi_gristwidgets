@@ -50,7 +50,6 @@ export default function ProductionPage({ modalCallback }) {
   const [clerkNotes, setClerkNotes] = useState("");
   const [paidNHDays, setPaidNHDays] = useState(false);
   const generatedPoRef = useRef(null);
-  const woodEntriesRef = useRef([]);
   const woodTypeOptions = [
     "Ash", "Birch", "Cedar", "Cherry", "Mahogany", "Oak", "Pine", "Poplar", "Other"
   ];
